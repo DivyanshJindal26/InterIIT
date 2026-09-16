@@ -1,0 +1,33 @@
+{
+  "scenario": "deployment_cascade",
+  "category": "deployment",
+  "predicted": "payments",
+  "expected": [
+    "payments"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 40,
+  "time_seconds": 0.02,
+  "candidates": [
+    "payments",
+    "gateway",
+    "db",
+    "redis",
+    "auth"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 3.5294753086419757,
+      "gateway": 1.2613653008265873,
+      "db": 0.845,
+      "redis": 0.65,
+      "auth": 0.65
+    }
+  }
+}

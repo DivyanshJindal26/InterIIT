@@ -1,0 +1,33 @@
+{
+  "scenario": "auth_error_spike",
+  "category": "error_injection",
+  "predicted": "auth",
+  "expected": [
+    "auth"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 48,
+  "time_seconds": 0.02,
+  "candidates": [
+    "auth",
+    "gateway",
+    "payments",
+    "user-store",
+    "redis"
+  ],
+  "signal_agreement": {
+    "accusation_top": "auth",
+    "recovery_tiebreaker": null,
+    "selected": "auth",
+    "suspicion_scores": {
+      "auth": 1.4357798165137616,
+      "gateway": 1.2869102258737892,
+      "payments": 0.65,
+      "user-store": 0.65,
+      "redis": 0.65
+    }
+  }
+}

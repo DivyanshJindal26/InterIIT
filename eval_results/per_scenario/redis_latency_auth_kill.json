@@ -1,0 +1,34 @@
+{
+  "scenario": "redis_latency_auth_kill",
+  "category": "exhaustion",
+  "predicted": "redis",
+  "expected": [
+    "auth",
+    "redis"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "external",
+  "budget_used": 45,
+  "time_seconds": 0.02,
+  "candidates": [
+    "redis",
+    "gateway",
+    "auth",
+    "payments",
+    "user-store"
+  ],
+  "signal_agreement": {
+    "accusation_top": "redis",
+    "recovery_tiebreaker": null,
+    "selected": "redis",
+    "suspicion_scores": {
+      "redis": 2.6,
+      "gateway": 1.5,
+      "auth": 1.5,
+      "payments": 0.65,
+      "user-store": 0.65
+    }
+  }
+}

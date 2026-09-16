@@ -1,0 +1,33 @@
+{
+  "scenario": "slow_burn_cascade",
+  "category": "latency",
+  "predicted": "db",
+  "expected": [
+    "db"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "unknown",
+  "budget_used": 48,
+  "time_seconds": 0.02,
+  "candidates": [
+    "db",
+    "gateway",
+    "payments",
+    "auth",
+    "redis"
+  ],
+  "signal_agreement": {
+    "accusation_top": "db",
+    "recovery_tiebreaker": null,
+    "selected": "db",
+    "suspicion_scores": {
+      "db": 2.6035971223021583,
+      "gateway": 1.5,
+      "payments": 1.485611510791367,
+      "auth": 0.6571942446043166,
+      "redis": 0.6535971223021583
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "scenario": "the_perfect_storm",
+  "category": "deployment",
+  "predicted": "payments",
+  "expected": [
+    "auth",
+    "db",
+    "gateway",
+    "payments",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 40,
+  "time_seconds": 0.03,
+  "candidates": [
+    "payments",
+    "gateway",
+    "user-store",
+    "db",
+    "redis"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 3.6413489592789623,
+      "gateway": 1.5,
+      "user-store": 1.3789473684210525,
+      "db": 0.8973429951690821,
+      "redis": 0.7979738562091503,
+      "auth": 0.5764933880528956
+    }
+  }
+}

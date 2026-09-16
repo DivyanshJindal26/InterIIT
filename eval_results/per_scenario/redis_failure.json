@@ -1,0 +1,34 @@
+{
+  "scenario": "redis_failure",
+  "category": "kill",
+  "predicted": "redis",
+  "expected": [
+    "redis"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 53,
+  "time_seconds": 0.02,
+  "candidates": [
+    "redis",
+    "gateway",
+    "payments",
+    "auth",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "redis",
+    "recovery_tiebreaker": null,
+    "selected": "redis",
+    "suspicion_scores": {
+      "redis": 1.4500000000000002,
+      "gateway": 1.0215387060880623,
+      "payments": 0.9449152542372881,
+      "auth": 0.8441692466460269,
+      "db": 0.65,
+      "user-store": 0.65
+    }
+  }
+}

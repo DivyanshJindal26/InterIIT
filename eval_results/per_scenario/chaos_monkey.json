@@ -1,0 +1,38 @@
+{
+  "scenario": "chaos_monkey",
+  "category": "compound",
+  "predicted": "payments",
+  "expected": [
+    "auth",
+    "db",
+    "gateway",
+    "payments",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 45,
+  "time_seconds": 0.02,
+  "candidates": [
+    "payments",
+    "auth",
+    "redis",
+    "db",
+    "gateway"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 1.7442424242424241,
+      "auth": 1.4666666666666668,
+      "redis": 1.4500000000000002,
+      "db": 1.4500000000000002,
+      "user-store": 0.7721052631578947
+    }
+  }
+}

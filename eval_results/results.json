@@ -1,0 +1,934 @@
+{
+  "timestamp": "2026-09-16T14:02:37.995963+00:00",
+  "aggregate": {
+    "total": 25,
+    "top1_accuracy": 1.0,
+    "top1_correct": 25,
+    "top3_accuracy": 1.0,
+    "top3_correct": 25,
+    "mrr": 1.0,
+    "per_category": {
+      "error_injection": {
+        "correct": 2,
+        "total": 2,
+        "accuracy": 1.0
+      },
+      "compound": {
+        "correct": 5,
+        "total": 5,
+        "accuracy": 1.0
+      },
+      "kill": {
+        "correct": 3,
+        "total": 3,
+        "accuracy": 1.0
+      },
+      "deployment": {
+        "correct": 6,
+        "total": 6,
+        "accuracy": 1.0
+      },
+      "latency": {
+        "correct": 4,
+        "total": 4,
+        "accuracy": 1.0
+      },
+      "exhaustion": {
+        "correct": 5,
+        "total": 5,
+        "accuracy": 1.0
+      }
+    },
+    "confidence_calibration": {
+      "high": {
+        "total": 17,
+        "correct": 17,
+        "accuracy": 1.0
+      },
+      "medium": {
+        "total": 8,
+        "correct": 8,
+        "accuracy": 1.0
+      },
+      "low": {
+        "total": 0,
+        "correct": 0,
+        "accuracy": null
+      }
+    },
+    "budget": {
+      "mean": 46.6,
+      "max": 53,
+      "min": 34
+    },
+    "time": {
+      "mean_seconds": 0.07,
+      "max_seconds": 1.15
+    },
+    "failures": []
+  },
+  "per_scenario": [
+    {
+      "scenario": "auth_error_spike",
+      "category": "error_injection",
+      "predicted": "auth",
+      "expected": [
+        "auth"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 48,
+      "time_seconds": 0.02,
+      "candidates": [
+        "auth",
+        "gateway",
+        "payments",
+        "user-store",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "auth",
+        "recovery_tiebreaker": null,
+        "selected": "auth",
+        "suspicion_scores": {
+          "auth": 1.4357798165137616,
+          "gateway": 1.2869102258737892,
+          "payments": 0.65,
+          "user-store": 0.65,
+          "redis": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "blame_the_wrong_service",
+      "category": "compound",
+      "predicted": "redis",
+      "expected": [
+        "auth",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 53,
+      "time_seconds": 0.01,
+      "candidates": [
+        "redis",
+        "auth",
+        "gateway",
+        "payments",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "redis",
+        "recovery_tiebreaker": null,
+        "selected": "redis",
+        "suspicion_scores": {
+          "redis": 1.4500000000000002,
+          "auth": 1.3725225225225226,
+          "gateway": 1.1980904522613067,
+          "payments": 0.8264550264550266,
+          "db": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "cascading_kill",
+      "category": "kill",
+      "predicted": "payments",
+      "expected": [
+        "payments",
+        "redis"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 53,
+      "time_seconds": 0.01,
+      "candidates": [
+        "payments",
+        "redis",
+        "gateway",
+        "auth",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 1.5954545454545455,
+          "redis": 1.4500000000000002,
+          "auth": 0.8892421833598305,
+          "db": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "chaos_monkey",
+      "category": "compound",
+      "predicted": "payments",
+      "expected": [
+        "auth",
+        "db",
+        "gateway",
+        "payments",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "auth",
+        "redis",
+        "db",
+        "gateway"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 1.7442424242424241,
+          "auth": 1.4666666666666668,
+          "redis": 1.4500000000000002,
+          "db": 1.4500000000000002,
+          "user-store": 0.7721052631578947
+        }
+      }
+    },
+    {
+      "scenario": "db_connection_flood",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 44,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "gateway",
+        "db",
+        "redis",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.3189102564102564,
+          "gateway": 1.2651373283395755,
+          "db": 1.0316951566951567,
+          "redis": 0.65,
+          "auth": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "db_latency_spike",
+      "category": "latency",
+      "predicted": "db",
+      "expected": [
+        "db"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "payments",
+        "gateway",
+        "redis",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6,
+          "payments": 1.4361702127659575,
+          "gateway": 1.2851278460918723,
+          "redis": 0.65,
+          "auth": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "deployment_cascade",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 40,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "gateway",
+        "db",
+        "redis",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.5294753086419757,
+          "gateway": 1.2613653008265873,
+          "db": 0.845,
+          "redis": 0.65,
+          "auth": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "double_deploy_conflict",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "auth",
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 49,
+      "time_seconds": 0.01,
+      "candidates": [
+        "payments",
+        "gateway",
+        "auth",
+        "db",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.0457823426573425,
+          "gateway": 1.2702888583218708,
+          "auth": 1.104895104895105,
+          "db": 0.9258207070707071,
+          "redis": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "false_recovery",
+      "category": "compound",
+      "predicted": "db",
+      "expected": [
+        "auth",
+        "db",
+        "payments",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "payments",
+        "user-store",
+        "gateway",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6,
+          "payments": 1.3767515546003166,
+          "user-store": 1.3675675675675678,
+          "gateway": 1.2455801363032117,
+          "redis": 0.8514102564102564,
+          "auth": 0.682315233785822
+        }
+      }
+    },
+    {
+      "scenario": "gateway_overload",
+      "category": "compound",
+      "predicted": "gateway",
+      "expected": [
+        "gateway"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 34,
+      "time_seconds": 0.05,
+      "candidates": [
+        "gateway",
+        "payments",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "gateway",
+        "recovery_tiebreaker": null,
+        "selected": "gateway",
+        "suspicion_scores": {
+          "gateway": 0.7791978845306302,
+          "payments": 0.65,
+          "auth": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "ghost_in_the_machine",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "auth",
+        "db",
+        "payments",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 48,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "redis",
+        "db",
+        "gateway",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.2053360686590313,
+          "redis": 2.6,
+          "db": 1.5894736842105264,
+          "auth": 0.9023255813953489,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "intermittent_errors",
+      "category": "error_injection",
+      "predicted": "payments",
+      "expected": [
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "gateway",
+        "redis",
+        "auth",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 1.5,
+          "gateway": 1.3411719737159244,
+          "redis": 0.65,
+          "auth": 0.65,
+          "db": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "memory_leak",
+      "category": "exhaustion",
+      "predicted": "auth",
+      "expected": [
+        "auth"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "unknown",
+      "budget_used": 44,
+      "time_seconds": 0.02,
+      "candidates": [
+        "auth",
+        "gateway",
+        "payments",
+        "user-store",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "auth",
+        "recovery_tiebreaker": null,
+        "selected": "auth",
+        "suspicion_scores": {
+          "auth": 1.8,
+          "gateway": 1.5,
+          "payments": 0.65,
+          "user-store": 0.65,
+          "redis": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "multi_fault",
+      "category": "exhaustion",
+      "predicted": "redis",
+      "expected": [
+        "auth",
+        "redis"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "unknown",
+      "budget_used": 53,
+      "time_seconds": 0.03,
+      "candidates": [
+        "redis",
+        "auth",
+        "gateway",
+        "payments",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "redis",
+        "recovery_tiebreaker": null,
+        "selected": "redis",
+        "suspicion_scores": {
+          "redis": 2.6,
+          "auth": 1.703570378597328,
+          "payments": 1.1060191437296099,
+          "db": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "needle_in_haystack",
+      "category": "exhaustion",
+      "predicted": "db",
+      "expected": [
+        "auth",
+        "db",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 49,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "redis",
+        "payments",
+        "gateway",
+        "user-store"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6,
+          "redis": 1.4500000000000002,
+          "payments": 1.3416406448932547,
+          "user-store": 0.6866566716641679,
+          "auth": 0.6643002028397567
+        }
+      }
+    },
+    {
+      "scenario": "payments_memory_leak",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 44,
+      "time_seconds": 0.02,
+      "candidates": [
+        "payments",
+        "gateway",
+        "db",
+        "redis",
+        "auth"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.4389563404464067,
+          "gateway": 1.2660171473109898,
+          "db": 0.9595516569200779,
+          "redis": 0.65,
+          "auth": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "redis_failure",
+      "category": "kill",
+      "predicted": "redis",
+      "expected": [
+        "redis"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 53,
+      "time_seconds": 0.02,
+      "candidates": [
+        "redis",
+        "gateway",
+        "payments",
+        "auth",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "redis",
+        "recovery_tiebreaker": null,
+        "selected": "redis",
+        "suspicion_scores": {
+          "redis": 1.4500000000000002,
+          "gateway": 1.0215387060880623,
+          "payments": 0.9449152542372881,
+          "auth": 0.8441692466460269,
+          "db": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "redis_latency_auth_kill",
+      "category": "exhaustion",
+      "predicted": "redis",
+      "expected": [
+        "auth",
+        "redis"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "external",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "redis",
+        "gateway",
+        "auth",
+        "payments",
+        "user-store"
+      ],
+      "signal_agreement": {
+        "accusation_top": "redis",
+        "recovery_tiebreaker": null,
+        "selected": "redis",
+        "suspicion_scores": {
+          "redis": 2.6,
+          "gateway": 1.5,
+          "auth": 1.5,
+          "payments": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "rolling_restart_failure",
+      "category": "kill",
+      "predicted": "payments",
+      "expected": [
+        "auth",
+        "payments"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "unknown",
+      "budget_used": 49,
+      "time_seconds": 0.01,
+      "candidates": [
+        "payments",
+        "auth",
+        "gateway",
+        "redis",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 1.8,
+          "auth": 1.8,
+          "gateway": 1.5,
+          "redis": 0.65,
+          "db": 0.65,
+          "user-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "slow_burn_cascade",
+      "category": "latency",
+      "predicted": "db",
+      "expected": [
+        "db"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "unknown",
+      "budget_used": 48,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "gateway",
+        "payments",
+        "auth",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6035971223021583,
+          "gateway": 1.5,
+          "payments": 1.485611510791367,
+          "auth": 0.6571942446043166,
+          "redis": 0.6535971223021583
+        }
+      }
+    },
+    {
+      "scenario": "the_perfect_storm",
+      "category": "deployment",
+      "predicted": "payments",
+      "expected": [
+        "auth",
+        "db",
+        "gateway",
+        "payments",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 40,
+      "time_seconds": 0.03,
+      "candidates": [
+        "payments",
+        "gateway",
+        "user-store",
+        "db",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "payments",
+        "recovery_tiebreaker": null,
+        "selected": "payments",
+        "suspicion_scores": {
+          "payments": 3.6413489592789623,
+          "gateway": 1.5,
+          "user-store": 1.3789473684210525,
+          "db": 0.8973429951690821,
+          "redis": 0.7979738562091503,
+          "auth": 0.5764933880528956
+        }
+      }
+    },
+    {
+      "scenario": "total_meltdown",
+      "category": "compound",
+      "predicted": "db",
+      "expected": [
+        "db",
+        "payments",
+        "redis"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 50,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "redis",
+        "payments",
+        "gateway",
+        "user-store"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6,
+          "redis": 1.4500000000000002,
+          "payments": 1.3890127121869527,
+          "user-store": 0.65,
+          "auth": 0.6345577211394302
+        }
+      }
+    },
+    {
+      "scenario": "traffic_surge",
+      "category": "latency",
+      "predicted": "gateway",
+      "expected": [
+        "gateway"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 48,
+      "time_seconds": 1.15,
+      "candidates": [
+        "gateway",
+        "payments",
+        "redis",
+        "auth",
+        "db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "gateway",
+        "recovery_tiebreaker": null,
+        "selected": "gateway",
+        "suspicion_scores": {
+          "gateway": 1.5,
+          "payments": 1.472768532526475,
+          "redis": 0.65,
+          "auth": 0.65,
+          "db": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "user_store_latency",
+      "category": "latency",
+      "predicted": "user-store",
+      "expected": [
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 45,
+      "time_seconds": 0.02,
+      "candidates": [
+        "user-store",
+        "auth",
+        "gateway",
+        "payments",
+        "redis"
+      ],
+      "signal_agreement": {
+        "accusation_top": "user-store",
+        "recovery_tiebreaker": null,
+        "selected": "user-store",
+        "suspicion_scores": {
+          "user-store": 2.6,
+          "auth": 1.4665902166843527,
+          "gateway": 1.3257070220529095,
+          "payments": 0.65,
+          "redis": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "whack_a_mole",
+      "category": "exhaustion",
+      "predicted": "db",
+      "expected": [
+        "auth",
+        "db",
+        "gateway",
+        "payments",
+        "redis",
+        "user-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "unknown",
+      "budget_used": 49,
+      "time_seconds": 0.02,
+      "candidates": [
+        "db",
+        "redis",
+        "auth",
+        "payments",
+        "gateway"
+      ],
+      "signal_agreement": {
+        "accusation_top": "db",
+        "recovery_tiebreaker": null,
+        "selected": "db",
+        "suspicion_scores": {
+          "db": 2.6,
+          "redis": 1.4500000000000002,
+          "auth": 1.3875706214689267,
+          "payments": 1.242432942334509,
+          "user-store": 0.5034945485043332
+        }
+      }
+    }
+  ]
+}

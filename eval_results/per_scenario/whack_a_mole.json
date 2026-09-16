@@ -1,0 +1,38 @@
+{
+  "scenario": "whack_a_mole",
+  "category": "exhaustion",
+  "predicted": "db",
+  "expected": [
+    "auth",
+    "db",
+    "gateway",
+    "payments",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "unknown",
+  "budget_used": 49,
+  "time_seconds": 0.02,
+  "candidates": [
+    "db",
+    "redis",
+    "auth",
+    "payments",
+    "gateway"
+  ],
+  "signal_agreement": {
+    "accusation_top": "db",
+    "recovery_tiebreaker": null,
+    "selected": "db",
+    "suspicion_scores": {
+      "db": 2.6,
+      "redis": 1.4500000000000002,
+      "auth": 1.3875706214689267,
+      "payments": 1.242432942334509,
+      "user-store": 0.5034945485043332
+    }
+  }
+}

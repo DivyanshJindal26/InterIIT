@@ -1,0 +1,18 @@
+Midnight Ghost Evaluation Summary
+Generated: 2026-09-16T14:02:37.996749+00:00
+Scenarios: 25
+
+Top-1 Accuracy: 100.0% (25/25)
+Top-3 Accuracy: 100.0% (25/25)
+MRR: 1.000
+
+Per-Category:
+  compound             100% (5/5)
+  deployment           100% (6/6)
+  error_injection      100% (2/2)
+  exhaustion           100% (5/5)
+  kill                 100% (3/3)
+  latency              100% (4/4)
+
+Budget: mean=47 max=53 min=34
+Time: mean=0.07s max=1.15s

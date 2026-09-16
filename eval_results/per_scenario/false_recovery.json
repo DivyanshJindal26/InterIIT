@@ -1,0 +1,38 @@
+{
+  "scenario": "false_recovery",
+  "category": "compound",
+  "predicted": "db",
+  "expected": [
+    "auth",
+    "db",
+    "payments",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 45,
+  "time_seconds": 0.02,
+  "candidates": [
+    "db",
+    "payments",
+    "user-store",
+    "gateway",
+    "redis"
+  ],
+  "signal_agreement": {
+    "accusation_top": "db",
+    "recovery_tiebreaker": null,
+    "selected": "db",
+    "suspicion_scores": {
+      "db": 2.6,
+      "payments": 1.3767515546003166,
+      "user-store": 1.3675675675675678,
+      "gateway": 1.2455801363032117,
+      "redis": 0.8514102564102564,
+      "auth": 0.682315233785822
+    }
+  }
+}

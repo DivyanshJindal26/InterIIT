@@ -1,0 +1,35 @@
+{
+  "scenario": "total_meltdown",
+  "category": "compound",
+  "predicted": "db",
+  "expected": [
+    "db",
+    "payments",
+    "redis"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 50,
+  "time_seconds": 0.02,
+  "candidates": [
+    "db",
+    "redis",
+    "payments",
+    "gateway",
+    "user-store"
+  ],
+  "signal_agreement": {
+    "accusation_top": "db",
+    "recovery_tiebreaker": null,
+    "selected": "db",
+    "suspicion_scores": {
+      "db": 2.6,
+      "redis": 1.4500000000000002,
+      "payments": 1.3890127121869527,
+      "user-store": 0.65,
+      "auth": 0.6345577211394302
+    }
+  }
+}

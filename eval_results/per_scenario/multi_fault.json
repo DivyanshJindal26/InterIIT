@@ -1,0 +1,34 @@
+{
+  "scenario": "multi_fault",
+  "category": "exhaustion",
+  "predicted": "redis",
+  "expected": [
+    "auth",
+    "redis"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "unknown",
+  "budget_used": 53,
+  "time_seconds": 0.03,
+  "candidates": [
+    "redis",
+    "auth",
+    "gateway",
+    "payments",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "redis",
+    "recovery_tiebreaker": null,
+    "selected": "redis",
+    "suspicion_scores": {
+      "redis": 2.6,
+      "auth": 1.703570378597328,
+      "payments": 1.1060191437296099,
+      "db": 0.65,
+      "user-store": 0.65
+    }
+  }
+}
