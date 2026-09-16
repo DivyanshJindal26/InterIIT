@@ -581,6 +581,341 @@ def double_deploy_conflict() -> ScenarioConfig:
     )
 
 
+def needle_in_haystack() -> ScenarioConfig:
+    """Real root cause: db latency spike. Red herrings: auth memory leak (unrelated),
+    user-store errors (unrelated), redis brief kill (unrelated, recovers fast).
+
+    The RCA agent must identify the db latency as the actual root cause of payments
+    failures while ignoring three concurrent but unrelated faults.
+
+    Timeline:
+    - 0-10s: steady state
+    - 8s: [RED HERRING] auth starts leaking memory (slow, won't OOM for a while)
+    - 12s: [RED HERRING] user-store gets 20% error injection (affects some auth paths)
+    - 15s: [ROOT CAUSE] db latency 200x — payments cascade begins
+    - 20s: [RED HERRING] redis killed briefly (auto-restarts in 3s)
+    - 30s: [RED HERRING] user-store errors stop
+    - 60s: db latency recovers
+    - 60-120s: system recovers, auth still leaking but hasn't OOM'd
+    """
+    return ScenarioConfig(
+        name="needle_in_haystack",
+        duration_ms=120_000,
+        seed=1337,
+        request_rate=5.0,
+        description="DB latency is the real root cause, buried under 3 concurrent red-herring faults",
+        faults=[
+            FaultEvent(
+                time_ms=8_000, target="auth", fault_type="memory_leak",
+                params={"leak_rate_mb_per_sec": 3},
+            ),
+            FaultEvent(
+                time_ms=12_000, target="user-store", fault_type="error_injection",
+                params={"error_rate": 0.2},
+            ),
+            FaultEvent(
+                time_ms=15_000, target="db", fault_type="latency_spike",
+                params={"multiplier": 200},
+            ),
+            FaultEvent(
+                time_ms=20_000, target="redis", fault_type="kill",
+                params={},
+            ),
+            FaultEvent(
+                time_ms=30_000, target="user-store", fault_type="error_injection",
+                params={"error_rate": 0.0},
+            ),
+            FaultEvent(
+                time_ms=60_000, target="db", fault_type="latency_spike",
+                params={"multiplier": 1},
+            ),
+        ],
+    )
+
+
+def ghost_in_the_machine() -> ScenarioConfig:
+    """Five faults, only two are the real cause. The rest are noise.
+
+    Real causes: payments config_change (pool flood) + redis latency spike (compounds it).
+    Red herrings: auth brief error burst (unrelated, stops on its own),
+    user-store latency blip (unrelated, too mild to cascade),
+    db brief kill (unrelated, auto-recovers).
+
+    Timeline:
+    - 0-5s: steady state
+    - 5s: [RED HERRING] auth 30% errors for 10 seconds
+    - 8s: [ROOT CAUSE 1] payments pool flooded to 400
+    - 10s: [RED HERRING] user-store latency 3x (barely noticeable)
+    - 12s: [ROOT CAUSE 2] redis latency 100x (compounds payments cascade)
+    - 15s: auth errors stop (red herring clears)
+    - 20s: [RED HERRING] db killed briefly
+    - 25s: user-store latency recovers
+    - 60s: payments rolled back
+    - 65s: redis recovers
+    - 65-120s: system recovers
+    """
+    return ScenarioConfig(
+        name="ghost_in_the_machine",
+        duration_ms=120_000,
+        seed=1984,
+        request_rate=5.0,
+        description="Two real root causes buried among three red-herring faults — the 'ghost' scenario",
+        faults=[
+            FaultEvent(
+                time_ms=5_000, target="auth", fault_type="error_injection",
+                params={"error_rate": 0.3},
+            ),
+            FaultEvent(
+                time_ms=8_000, target="payments", fault_type="config_change",
+                params={"connection_pool_size": 400, "version": "v2.8.0-canary"},
+            ),
+            FaultEvent(
+                time_ms=10_000, target="user-store", fault_type="latency_spike",
+                params={"multiplier": 3},
+            ),
+            FaultEvent(
+                time_ms=12_000, target="redis", fault_type="latency_spike",
+                params={"multiplier": 100},
+            ),
+            FaultEvent(
+                time_ms=15_000, target="auth", fault_type="error_injection",
+                params={"error_rate": 0.0},
+            ),
+            FaultEvent(
+                time_ms=20_000, target="db", fault_type="kill",
+                params={},
+            ),
+            FaultEvent(
+                time_ms=25_000, target="user-store", fault_type="latency_spike",
+                params={"multiplier": 1},
+            ),
+            FaultEvent(
+                time_ms=60_000, target="payments", fault_type="rollback",
+                params={"revert_config": True, "version": "v2.3.1"},
+            ),
+            FaultEvent(
+                time_ms=65_000, target="redis", fault_type="latency_spike",
+                params={"multiplier": 1},
+            ),
+        ],
+    )
+
+
+def blame_the_wrong_service() -> ScenarioConfig:
+    """Redis is killed, but the real damage is from payments' retry storm that kills db.
+
+    The obvious suspect is redis (it died first), but the actual cascade path is:
+    redis dies → payments retries overwhelm db → db exhausts connections → payments errors.
+    Redis itself recovers in 3s, but the db damage persists much longer.
+
+    Timeline:
+    - 0-10s: steady state
+    - 10s: redis killed
+    - 10-13s: redis dead, payments retries start
+    - 13s: redis back, but payments retry storm already overloaded db
+    - 13-25s: [RED HERRING] auth gets unrelated 15% error injection (bad config)
+    - 15s: [RED HERRING] user-store latency 5x (maintenance)
+    - 20-60s: db is the real bottleneck (connections exhausted from retry storm)
+    - 30s: user-store latency recovers
+    - 40s: auth errors stop
+    - 60-90s: db slowly recovers
+    """
+    return ScenarioConfig(
+        name="blame_the_wrong_service",
+        duration_ms=90_000,
+        seed=2024,
+        request_rate=5.0,
+        description="Redis dies briefly but db is the real victim — retry storm misdirection",
+        faults=[
+            FaultEvent(
+                time_ms=10_000, target="redis", fault_type="kill",
+                params={},
+            ),
+            FaultEvent(
+                time_ms=13_000, target="auth", fault_type="error_injection",
+                params={"error_rate": 0.15},
+            ),
+            FaultEvent(
+                time_ms=15_000, target="user-store", fault_type="latency_spike",
+                params={"multiplier": 5},
+            ),
+            FaultEvent(
+                time_ms=30_000, target="user-store", fault_type="latency_spike",
+                params={"multiplier": 1},
+            ),
+            FaultEvent(
+                time_ms=40_000, target="auth", fault_type="error_injection",
+                params={"error_rate": 0.0},
+            ),
+        ],
+    )
+
+
+def chaos_monkey() -> ScenarioConfig:
+    """Simulated chaos engineering run: random kills across services with noise.
+
+    Multiple services get killed at staggered intervals (like a chaos monkey run),
+    plus unrelated latency and error faults to confuse the RCA.
+
+    Timeline:
+    - 5s: auth killed
+    - 10s: [NOISE] db latency 3x
+    - 15s: payments killed (while auth is restarting)
+    - 20s: db latency recovers
+    - 25s: [NOISE] user-store 10% errors
+    - 30s: redis killed (payments recovering, auth back)
+    - 40s: user-store errors stop
+    - 45s: [NOISE] gateway latency 5x
+    - 55s: gateway latency recovers
+    - 60s: db killed
+    - 80-120s: everything recovering
+    """
+    return ScenarioConfig(
+        name="chaos_monkey",
+        duration_ms=120_000,
+        seed=9999,
+        request_rate=5.0,
+        description="Chaos monkey: staggered kills across 4 services with noise faults between",
+        faults=[
+            FaultEvent(time_ms=5_000, target="auth", fault_type="kill", params={}),
+            FaultEvent(time_ms=10_000, target="db", fault_type="latency_spike", params={"multiplier": 3}),
+            FaultEvent(time_ms=15_000, target="payments", fault_type="kill", params={}),
+            FaultEvent(time_ms=20_000, target="db", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=25_000, target="user-store", fault_type="error_injection", params={"error_rate": 0.1}),
+            FaultEvent(time_ms=30_000, target="redis", fault_type="kill", params={}),
+            FaultEvent(time_ms=40_000, target="user-store", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=45_000, target="gateway", fault_type="latency_spike", params={"multiplier": 5}),
+            FaultEvent(time_ms=55_000, target="gateway", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=60_000, target="db", fault_type="kill", params={}),
+        ],
+    )
+
+
+def the_perfect_storm() -> ScenarioConfig:
+    """Six faults across all service tiers, overlapping in complex ways.
+
+    Root causes: payments deploy (pool flood) and db latency spike.
+    Red herrings: auth memory leak (slow, won't OOM during scenario),
+    redis brief errors, user-store kill, gateway latency blip.
+
+    The challenge: identify that payments pool + db latency are the interacting
+    root causes while 4 other faults create noise across every service.
+
+    Timeline:
+    - 3s: [RED HERRING] auth memory leak (very slow)
+    - 5s: [RED HERRING] redis 10% errors
+    - 8s: [ROOT CAUSE] payments pool flood 350
+    - 10s: [ROOT CAUSE] db latency 150x
+    - 15s: [RED HERRING] user-store killed
+    - 18s: user-store back
+    - 20s: [RED HERRING] gateway latency 10x for 10s
+    - 25s: redis errors stop
+    - 30s: gateway latency recovers
+    - 60s: payments rolled back
+    - 70s: db latency recovers
+    - 70-120s: system recovery
+    """
+    return ScenarioConfig(
+        name="the_perfect_storm",
+        duration_ms=120_000,
+        seed=7777,
+        request_rate=5.0,
+        description="6 overlapping faults across all tiers — 2 real root causes, 4 red herrings",
+        faults=[
+            FaultEvent(time_ms=3_000, target="auth", fault_type="memory_leak", params={"leak_rate_mb_per_sec": 2}),
+            FaultEvent(time_ms=5_000, target="redis", fault_type="error_injection", params={"error_rate": 0.1}),
+            FaultEvent(time_ms=8_000, target="payments", fault_type="config_change", params={"connection_pool_size": 350, "version": "v3.0.0-rc1"}),
+            FaultEvent(time_ms=10_000, target="db", fault_type="latency_spike", params={"multiplier": 150}),
+            FaultEvent(time_ms=15_000, target="user-store", fault_type="kill", params={}),
+            FaultEvent(time_ms=20_000, target="gateway", fault_type="latency_spike", params={"multiplier": 10}),
+            FaultEvent(time_ms=25_000, target="redis", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=30_000, target="gateway", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=60_000, target="payments", fault_type="rollback", params={"revert_config": True, "version": "v2.3.1"}),
+            FaultEvent(time_ms=70_000, target="db", fault_type="latency_spike", params={"multiplier": 1}),
+        ],
+    )
+
+
+def false_recovery() -> ScenarioConfig:
+    """System appears to recover, then gets hit again — tests temporal reasoning.
+
+    First wave: payments errors (real fault).
+    Brief recovery window where everything looks healthy.
+    Second wave: db latency spike (different root cause).
+    Plus noise faults scattered throughout.
+
+    Timeline:
+    - 5s: [WAVE 1] payments 50% errors
+    - 8s: [RED HERRING] auth latency 3x
+    - 15s: auth latency recovers
+    - 20s: payments errors stop — system "recovers"
+    - 20-35s: quiet recovery period (everything looks healthy)
+    - 35s: [WAVE 2] db latency 200x (new, unrelated root cause)
+    - 38s: [RED HERRING] redis 15% errors
+    - 45s: redis errors stop
+    - 50s: [RED HERRING] user-store killed briefly
+    - 70s: db recovers
+    - 70-120s: final recovery
+    """
+    return ScenarioConfig(
+        name="false_recovery",
+        duration_ms=120_000,
+        seed=5050,
+        request_rate=5.0,
+        description="System recovers then fails again from different root cause — two-wave incident with noise",
+        faults=[
+            FaultEvent(time_ms=5_000, target="payments", fault_type="error_injection", params={"error_rate": 0.5}),
+            FaultEvent(time_ms=8_000, target="auth", fault_type="latency_spike", params={"multiplier": 3}),
+            FaultEvent(time_ms=15_000, target="auth", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=20_000, target="payments", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=35_000, target="db", fault_type="latency_spike", params={"multiplier": 200}),
+            FaultEvent(time_ms=38_000, target="redis", fault_type="error_injection", params={"error_rate": 0.15}),
+            FaultEvent(time_ms=45_000, target="redis", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=50_000, target="user-store", fault_type="kill", params={}),
+            FaultEvent(time_ms=70_000, target="db", fault_type="latency_spike", params={"multiplier": 1}),
+        ],
+    )
+
+
+def whack_a_mole() -> ScenarioConfig:
+    """Every time one fault is "fixed", another appears — 4 sequential root causes.
+
+    Timeline:
+    - 5s: redis killed
+    - 8s: redis back, but payments now has errors (injected independently)
+    - 15s: [RED HERRING] auth latency 5x
+    - 20s: payments errors fixed, but db goes slow
+    - 25s: auth latency recovers
+    - 30s: [RED HERRING] user-store 10% errors
+    - 40s: db fixed, but auth starts leaking memory
+    - 45s: user-store errors stop
+    - 60s: [RED HERRING] gateway latency 3x
+    - 70s: gateway latency recovers
+    - 90-150s: auth eventually OOMs, restarts, system recovers
+    """
+    return ScenarioConfig(
+        name="whack_a_mole",
+        duration_ms=150_000,
+        seed=4242,
+        request_rate=5.0,
+        description="Sequential root causes with noise — each fix reveals a new problem",
+        faults=[
+            FaultEvent(time_ms=5_000, target="redis", fault_type="kill", params={}),
+            FaultEvent(time_ms=8_000, target="payments", fault_type="error_injection", params={"error_rate": 0.6}),
+            FaultEvent(time_ms=15_000, target="auth", fault_type="latency_spike", params={"multiplier": 5}),
+            FaultEvent(time_ms=20_000, target="payments", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=20_000, target="db", fault_type="latency_spike", params={"multiplier": 150}),
+            FaultEvent(time_ms=25_000, target="auth", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=30_000, target="user-store", fault_type="error_injection", params={"error_rate": 0.1}),
+            FaultEvent(time_ms=40_000, target="db", fault_type="latency_spike", params={"multiplier": 1}),
+            FaultEvent(time_ms=40_000, target="auth", fault_type="memory_leak", params={"leak_rate_mb_per_sec": 10}),
+            FaultEvent(time_ms=45_000, target="user-store", fault_type="error_injection", params={"error_rate": 0.0}),
+            FaultEvent(time_ms=60_000, target="gateway", fault_type="latency_spike", params={"multiplier": 3}),
+            FaultEvent(time_ms=70_000, target="gateway", fault_type="latency_spike", params={"multiplier": 1}),
+        ],
+    )
+
+
 SCENARIOS: dict[str, callable] = {
     "deployment_cascade": deployment_cascade,
     "memory_leak": memory_leak,
@@ -600,6 +935,13 @@ SCENARIOS: dict[str, callable] = {
     "gateway_overload": gateway_overload,
     "redis_latency_auth_kill": redis_latency_auth_kill,
     "double_deploy_conflict": double_deploy_conflict,
+    "needle_in_haystack": needle_in_haystack,
+    "ghost_in_the_machine": ghost_in_the_machine,
+    "blame_the_wrong_service": blame_the_wrong_service,
+    "chaos_monkey": chaos_monkey,
+    "the_perfect_storm": the_perfect_storm,
+    "false_recovery": false_recovery,
+    "whack_a_mole": whack_a_mole,
 }
 
 
