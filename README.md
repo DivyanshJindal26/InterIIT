@@ -1,22 +1,35 @@
-# Midnight Ghost Simulator
+# Midnight Ghost
 
-Discrete event simulator for microservice cascade failures. Generates format-realistic telemetry (OTel traces, application logs, Prometheus metrics, K8s events) from physics-based cascade dynamics across 8 interconnected services.
-
-Built for training and evaluating autonomous RCA (Root Cause Analysis) agents.
+Autonomous RCA (Root Cause Analysis) system for microservice cascade failures. Includes a physics-based simulator that generates format-realistic telemetry, and a production-grade ingestion pipeline that builds a queryable, indexed event store from the raw output.
 
 ## Quick Start
 
 ```bash
-# Run the default scenario
-python -m simulator
-
-# Run a specific scenario
+# 1. Generate telemetry
 python -m simulator deployment_cascade
 
-# List all 25 scenarios
-python -m simulator --list
+# 2. Ingest and index
+pip install drain3 pybloom_live
+python -m midnight_ghost.ingest \
+    --input output/deployment_cascade/ \
+    --output event_store/deployment_cascade/ \
+    --index-output indexes/deployment_cascade/
 
-# Custom output directory and seed
+# 3. Query (from Python)
+from midnight_ghost.query.api import QueryAPI
+from midnight_ghost.query.types import TimeRange
+
+api = QueryAPI('event_store/deployment_cascade/', 'indexes/deployment_cascade/')
+bounds = api.get_time_bounds()
+summary = api.get_anomaly_summary('payments', bounds)
+spikes = api.get_template_spikes('payments', bounds)
+```
+
+### Simulator Only
+
+```bash
+python -m simulator deployment_cascade
+python -m simulator --list          # List all 25 scenarios
 python -m simulator needle_in_haystack -o my_output --seed 12345
 ```
 
@@ -172,12 +185,129 @@ python -m simulator total_meltdown \
 
 Each log line grows from ~200 bytes to ~2-5KB, realistic for production services.
 
+## Ingestion Pipeline
+
+Takes raw simulator output and builds a queryable, indexed event store. Designed for streaming — processes 500 GB without holding all events in memory.
+
+```bash
+python -m midnight_ghost.ingest \
+    --input output/deployment_cascade/ \
+    --output event_store/deployment_cascade/ \
+    --index-output indexes/deployment_cascade/
+```
+
+### Pipeline Stages
+
+| Stage | Module | What it does |
+|-------|--------|-------------|
+| 1. Format Detection | `parsers.py` | Auto-detects log format (zerolog, log4j, nginx, redis, postgres, python stdlib) and extracts standard fields |
+| 2. Template Extraction | `drain_wrapper.py` | Drain3 clusters log messages into templates with parameter extraction |
+| 3. Semantic Tagging | `tagger.py` | Regex rules map templates to failure categories (resource_exhaustion, timeout, upstream_failure, etc.) |
+| 4. Event Construction | `events.py` | Unified Event dataclass for logs, traces, metrics, and k8s events |
+| 5. Partitioned Store | `store.py` | Writes events to `service/minute.jsonl` files with bounded file handle pool |
+| 6. Index Construction | `indexer.py` | Builds template time series, severity histograms, trace index, metric series, bloom filters |
+| 7. Query API | `query/api.py` | Budget-tracked query interface over the indexed event store |
+
+### Event Store Layout
+
+```
+event_store/<scenario>/
+├── gateway/
+│   ├── 2024-01-15T14:29.jsonl
+│   ├── 2024-01-15T14:30.jsonl
+│   └── ...
+├── payments/
+│   └── ...
+└── ...
+```
+
+### Index Layout
+
+```
+indexes/<scenario>/
+├── template_ts/<service>.jsonl      # Template counts per minute
+├── severity/<service>.jsonl         # Severity histogram per minute
+├── traces.jsonl                     # Trace ID -> span list
+├── metrics/<service>/<metric>.jsonl # Time series per metric
+├── bloom/<service>/<minute>.bloom   # Token bloom filters
+└── template_texts.json              # Template ID -> template text
+```
+
+## Query API
+
+Budget-tracked interface the RCA agent calls. Each method costs 1 budget unit.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get_anomaly_summary(service, window)` | `AnomalySummary` | Error ratio vs baseline, anomaly score 0-1, top templates |
+| `get_template_spikes(service, window)` | `list[TemplateSpike]` | Templates that spiked vs baseline (>3x), with failure tags |
+| `get_trace_parents(service, window)` | `dict[str, float]` | Which services were calling this one (parent proportions) |
+| `get_trace_spans(trace_id)` | `list[SpanNode]` | All spans for a trace with parent-child linkage |
+| `get_metric_series(service, metric, window)` | `list[tuple]` | Time series `[(timestamp_ns, value), ...]` |
+| `get_examples(template_id, service, n)` | `list[Event]` | N example events matching a template (reservoir sampled) |
+| `bloom_check(service, window, token)` | `bool` | Does this partition contain this token? O(1) |
+| `get_budget_report()` | `dict` | Total queries used + full query log |
+
+```python
+from midnight_ghost.query.api import QueryAPI
+from midnight_ghost.query.types import TimeRange
+
+api = QueryAPI('event_store/scenario/', 'indexes/scenario/')
+bounds = api.get_time_bounds()
+
+# Which services are anomalous?
+for svc in api.list_services():
+    s = api.get_anomaly_summary(svc, bounds)
+    if s.error_count > 0:
+        print(f'{svc}: score={s.anomaly_score:.2f} errors={s.error_count}')
+
+# What error templates spiked?
+spikes = api.get_template_spikes('payments', bounds)
+for s in spikes:
+    print(f'[{s.spike_factor:.0f}x] {s.template_text}  tags={s.tags}')
+
+# Who was calling this service?
+parents = api.get_trace_parents('redis', bounds)
+# → {'auth': 0.67, 'payments': 0.33}
+```
+
+## Project Structure
+
+```
+midnight_ghost/
+├── simulator/              # Telemetry generator
+│   ├── engine.py           # Simulation engine (physics rules, tick loop)
+│   ├── scenarios.py        # 25 fault scenarios
+│   ├── logs.py             # Format-realistic log emitters
+│   ├── traces.py           # OTel span serialization
+│   └── models.py           # Service configs, state, data models
+├── ingest/                 # Ingestion pipeline
+│   ├── __main__.py         # CLI entry point
+│   ├── parsers.py          # Format detection + per-format parsers
+│   ├── drain_wrapper.py    # Drain3 template extraction
+│   ├── tagger.py           # Semantic tagging rules
+│   ├── events.py           # Event dataclass + builders
+│   ├── store.py            # Partitioned event store writer
+│   └── indexer.py          # Index construction + bloom filters
+├── query/                  # Query layer
+│   ├── api.py              # QueryAPI class
+│   └── types.py            # TimeRange, AnomalySummary, TemplateSpike, SpanNode
+└── analysis/               # RCA agent (coming next)
+```
+
+## Requirements
+
+- Python 3.10+
+- Simulator: no external dependencies
+- Ingestion pipeline: `drain3`, `pybloom_live`
+
 ## Constraints
 
-- Python 3.10+, no external dependencies
 - Deterministic: same seed produces identical output
 - Base scenarios run under 1 second each
 - All cascade behavior emerges from physics, not scripts
+- Ingestion handles 500 GB without running out of memory
+- Each query API call returns in < 1 second on indexed data
 
 ## Fault Types
 
