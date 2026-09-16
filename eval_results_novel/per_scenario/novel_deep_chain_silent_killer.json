@@ -1,0 +1,33 @@
+{
+  "scenario": "novel_deep_chain_silent_killer",
+  "category": "kill",
+  "predicted": "api-gateway",
+  "expected": [
+    "warehouse-svc"
+  ],
+  "correct": false,
+  "predicted_rank": 2,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 39,
+  "time_seconds": 0.02,
+  "candidates": [
+    "api-gateway",
+    "warehouse-svc",
+    "inventory-cache",
+    "order-processor",
+    "shipping-db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "api-gateway",
+    "recovery_tiebreaker": null,
+    "selected": "api-gateway",
+    "suspicion_scores": {
+      "api-gateway": 1.4455445544554455,
+      "warehouse-svc": 1.3789473684210525,
+      "inventory-cache": 0.9438432835820896,
+      "order-processor": 0.888157894736842,
+      "shipping-db": 0.65
+    }
+  }
+}

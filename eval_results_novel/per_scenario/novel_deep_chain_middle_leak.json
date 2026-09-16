@@ -1,0 +1,31 @@
+{
+  "scenario": "novel_deep_chain_middle_leak",
+  "category": "exhaustion",
+  "predicted": "inventory-cache",
+  "expected": [
+    "inventory-cache"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 33,
+  "time_seconds": 0.02,
+  "candidates": [
+    "inventory-cache",
+    "api-gateway",
+    "order-processor",
+    "warehouse-svc"
+  ],
+  "signal_agreement": {
+    "accusation_top": "inventory-cache",
+    "recovery_tiebreaker": null,
+    "selected": "inventory-cache",
+    "suspicion_scores": {
+      "inventory-cache": 1.8,
+      "api-gateway": 1.5,
+      "order-processor": 1.1666666666666667,
+      "warehouse-svc": 0.65
+    }
+  }
+}

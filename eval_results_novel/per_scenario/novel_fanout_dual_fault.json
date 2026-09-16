@@ -1,0 +1,34 @@
+{
+  "scenario": "novel_fanout_dual_fault",
+  "category": "compound",
+  "predicted": "search-index",
+  "expected": [
+    "billing-engine",
+    "search-index"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 48,
+  "time_seconds": 0.02,
+  "candidates": [
+    "search-index",
+    "billing-engine",
+    "load-balancer",
+    "notification-hub",
+    "recommendation-engine"
+  ],
+  "signal_agreement": {
+    "accusation_top": "search-index",
+    "recovery_tiebreaker": null,
+    "selected": "search-index",
+    "suspicion_scores": {
+      "search-index": 2.6,
+      "billing-engine": 1.9300000000000002,
+      "load-balancer": 1.5,
+      "notification-hub": 0.65,
+      "recommendation-engine": 0.65
+    }
+  }
+}

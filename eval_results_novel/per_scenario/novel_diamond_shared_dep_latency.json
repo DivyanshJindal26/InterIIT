@@ -1,0 +1,31 @@
+{
+  "scenario": "novel_diamond_shared_dep_latency",
+  "category": "latency",
+  "predicted": "object-store",
+  "expected": [
+    "object-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 31,
+  "time_seconds": 0.01,
+  "candidates": [
+    "object-store",
+    "cdn-proxy",
+    "image-processor",
+    "video-transcoder"
+  ],
+  "signal_agreement": {
+    "accusation_top": "object-store",
+    "recovery_tiebreaker": null,
+    "selected": "object-store",
+    "suspicion_scores": {
+      "object-store": 2.6,
+      "cdn-proxy": 1.4977001340319238,
+      "image-processor": 1.2160228619549622,
+      "video-transcoder": 1.1946764211465692
+    }
+  }
+}

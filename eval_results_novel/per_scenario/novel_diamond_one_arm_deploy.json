@@ -1,0 +1,27 @@
+{
+  "scenario": "novel_diamond_one_arm_deploy",
+  "category": "deployment",
+  "predicted": "image-processor",
+  "expected": [
+    "image-processor"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "unknown",
+  "budget_used": 23,
+  "time_seconds": 0.01,
+  "candidates": [
+    "image-processor",
+    "object-store"
+  ],
+  "signal_agreement": {
+    "accusation_top": "image-processor",
+    "recovery_tiebreaker": null,
+    "selected": "image-processor",
+    "suspicion_scores": {
+      "image-processor": 2.4658314350797266,
+      "object-store": 0.65
+    }
+  }
+}

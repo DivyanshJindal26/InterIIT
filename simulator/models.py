@@ -113,6 +113,9 @@ class ScenarioConfig:
     request_rate: float
     faults: list[FaultEvent] = field(default_factory=list)
     description: str = ""
+    services: list[ServiceConfig] | None = None
+    request_paths: list[list[str]] | None = None
+    http_endpoints: dict | None = None
 
 
 SERVICE_DEFAULTS: list[ServiceConfig] = [

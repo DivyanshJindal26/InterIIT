@@ -70,10 +70,15 @@ class SimulationEngine:
             self._init_streaming()
 
     def _init_services(self) -> None:
-        for svc in SERVICE_DEFAULTS:
+        source = self.scenario.services if self.scenario.services else SERVICE_DEFAULTS
+        for svc in source:
             cfg = deepcopy(svc)
             self.configs[cfg.name] = cfg
             self.states[cfg.name] = ServiceState()
+
+        self._request_paths = self.scenario.request_paths or REQUEST_PATHS
+        self._http_endpoints = self.scenario.http_endpoints or HTTP_ENDPOINTS
+        self._flapper_svc = self._find_flapper()
 
     def run(self) -> None:
         duration = self.scenario.duration_ms
@@ -190,6 +195,15 @@ class SimulationEngine:
 
         self.active_faults.append(fault)
 
+    def _find_flapper(self) -> str | None:
+        on_paths = set()
+        for p in self._request_paths:
+            on_paths.update(p)
+        for name, cfg in self.configs.items():
+            if name not in on_paths and not cfg.dependencies:
+                return name
+        return None
+
     def _generate_requests(self) -> None:
         n_requests = int(self.scenario.request_rate)
         frac = self.scenario.request_rate - n_requests
@@ -197,10 +211,10 @@ class SimulationEngine:
             n_requests += 1
 
         for _ in range(n_requests):
-            path_idx = self.rng.randint(0, len(REQUEST_PATHS) - 1)
-            path = REQUEST_PATHS[path_idx]
+            path_idx = self.rng.randint(0, len(self._request_paths) - 1)
+            path = self._request_paths[path_idx]
             trace_id = self._gen_trace_id()
-            method, url = self.rng.choice(HTTP_ENDPOINTS.get(path[0], [("GET", "/")]))
+            method, url = self.rng.choice(self._http_endpoints.get(path[0], [("GET", "/")]))
             self._route_request(path, trace_id, method, url)
 
     def _route_request(
@@ -220,7 +234,7 @@ class SimulationEngine:
 
             span_id = self._gen_span_id()
             svc_method, svc_url = self.rng.choice(
-                HTTP_ENDPOINTS.get(svc_name, [("GET", "/")])
+                self._http_endpoints.get(svc_name, [("GET", "/")])
             )
             if i == 0:
                 svc_method = method
@@ -487,12 +501,12 @@ class SimulationEngine:
                 lines = self.log_emitter.emit_pool_stats_log(wt, config, state)
                 self.log_buffers[name].extend(lines)
 
-            if name == "db" and self.tick_count % 200 == 0:
+            if config.log_framework == "postgres-native" and self.tick_count % 200 == 0:
                 dur = self.rng.randint(100, 2000)
                 lines = self.log_emitter.emit_slow_query_log(wt, config, dur)
                 self.log_buffers[name].extend(lines)
 
-            if name == "redis" and self.tick_count % 150 == 0:
+            if config.log_framework == "redis-native" and self.tick_count % 150 == 0:
                 lines = self.log_emitter.emit_redis_background_log(wt, config, state)
                 self.log_buffers[name].extend(lines)
 
@@ -504,7 +518,9 @@ class SimulationEngine:
         self._handle_flapper()
 
     def _handle_flapper(self) -> None:
-        svc = "logging-svc"
+        svc = self._flapper_svc
+        if svc is None:
+            return
         state = self.states[svc]
         config = self.configs[svc]
         if state.status == ServiceStatus.DEAD:
@@ -744,9 +760,9 @@ class SimulationEngine:
                 for name, cfg in self.configs.items()
             },
             "call_graph": {
-                "gateway": ["payments", "auth"],
-                "payments": ["redis", "db"],
-                "auth": ["redis", "user-store"],
+                name: cfg.dependencies
+                for name, cfg in self.configs.items()
+                if cfg.dependencies
             },
         }
         with open(sc_path, "w") as f:

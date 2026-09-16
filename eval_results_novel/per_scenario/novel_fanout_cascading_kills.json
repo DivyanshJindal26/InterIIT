@@ -1,0 +1,34 @@
+{
+  "scenario": "novel_fanout_cascading_kills",
+  "category": "kill",
+  "predicted": "notification-hub",
+  "expected": [
+    "notification-hub",
+    "search-index"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 43,
+  "time_seconds": 0.01,
+  "candidates": [
+    "notification-hub",
+    "search-index",
+    "load-balancer",
+    "billing-engine",
+    "recommendation-engine"
+  ],
+  "signal_agreement": {
+    "accusation_top": "notification-hub",
+    "recovery_tiebreaker": null,
+    "selected": "notification-hub",
+    "suspicion_scores": {
+      "notification-hub": 1.7565217391304349,
+      "search-index": 1.6636363636363638,
+      "load-balancer": 1.4941002949852509,
+      "billing-engine": 0.65,
+      "recommendation-engine": 0.65
+    }
+  }
+}

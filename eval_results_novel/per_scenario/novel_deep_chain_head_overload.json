@@ -1,0 +1,27 @@
+{
+  "scenario": "novel_deep_chain_head_overload",
+  "category": "deployment",
+  "predicted": "api-gateway",
+  "expected": [
+    "api-gateway"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 24,
+  "time_seconds": 0.03,
+  "candidates": [
+    "api-gateway",
+    "order-processor"
+  ],
+  "signal_agreement": {
+    "accusation_top": "api-gateway",
+    "recovery_tiebreaker": null,
+    "selected": "api-gateway",
+    "suspicion_scores": {
+      "api-gateway": 2.4879692011549563,
+      "order-processor": 0.65
+    }
+  }
+}

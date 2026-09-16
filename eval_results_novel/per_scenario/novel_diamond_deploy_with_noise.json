@@ -1,0 +1,33 @@
+{
+  "scenario": "novel_diamond_deploy_with_noise",
+  "category": "deployment",
+  "predicted": "cdn-proxy",
+  "expected": [
+    "cdn-proxy",
+    "object-store",
+    "video-transcoder"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 33,
+  "time_seconds": 0.05,
+  "candidates": [
+    "cdn-proxy",
+    "object-store",
+    "video-transcoder",
+    "image-processor"
+  ],
+  "signal_agreement": {
+    "accusation_top": "cdn-proxy",
+    "recovery_tiebreaker": null,
+    "selected": "cdn-proxy",
+    "suspicion_scores": {
+      "cdn-proxy": 2.243332083499685,
+      "object-store": 1.4500000000000002,
+      "video-transcoder": 1.2343771993026338,
+      "image-processor": 1.207291269770496
+    }
+  }
+}

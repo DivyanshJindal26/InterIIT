@@ -1,0 +1,488 @@
+{
+  "timestamp": "2026-09-16T20:21:51.375500+00:00",
+  "aggregate": {
+    "total": 10,
+    "top1_accuracy": 0.7,
+    "top1_correct": 7,
+    "top3_accuracy": 1.0,
+    "top3_correct": 10,
+    "mrr": 0.85,
+    "per_category": {
+      "deployment": {
+        "correct": 3,
+        "total": 3,
+        "accuracy": 1.0
+      },
+      "kill": {
+        "correct": 1,
+        "total": 3,
+        "accuracy": 0.3333333333333333
+      },
+      "exhaustion": {
+        "correct": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "latency": {
+        "correct": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "compound": {
+        "correct": 1,
+        "total": 1,
+        "accuracy": 1.0
+      },
+      "error_injection": {
+        "correct": 0,
+        "total": 1,
+        "accuracy": 0.0
+      }
+    },
+    "confidence_calibration": {
+      "high": {
+        "total": 6,
+        "correct": 6,
+        "accuracy": 1.0
+      },
+      "medium": {
+        "total": 4,
+        "correct": 1,
+        "accuracy": 0.25
+      },
+      "low": {
+        "total": 0,
+        "correct": 0,
+        "accuracy": null
+      }
+    },
+    "budget": {
+      "mean": 36.0,
+      "max": 48,
+      "min": 23
+    },
+    "time": {
+      "mean_seconds": 0.02,
+      "max_seconds": 0.05
+    },
+    "failures": [
+      {
+        "scenario": "novel_deep_chain_leaf_crash",
+        "category": "kill",
+        "predicted": "api-gateway",
+        "expected": [
+          "shipping-db"
+        ],
+        "correct": false,
+        "predicted_rank": 2,
+        "confidence": 0.6,
+        "failure_mode": "exhaustion",
+        "budget_used": 39,
+        "time_seconds": 0.02,
+        "candidates": [
+          "api-gateway",
+          "shipping-db",
+          "order-processor",
+          "inventory-cache",
+          "warehouse-svc"
+        ],
+        "signal_agreement": {
+          "accusation_top": "api-gateway",
+          "recovery_tiebreaker": null,
+          "selected": "api-gateway",
+          "suspicion_scores": {
+            "api-gateway": 1.4704433497536944,
+            "shipping-db": 1.4500000000000002,
+            "order-processor": 1.0664212548015364,
+            "inventory-cache": 0.9953703703703702,
+            "warehouse-svc": 0.8258456659619451
+          }
+        }
+      },
+      {
+        "scenario": "novel_deep_chain_silent_killer",
+        "category": "kill",
+        "predicted": "api-gateway",
+        "expected": [
+          "warehouse-svc"
+        ],
+        "correct": false,
+        "predicted_rank": 2,
+        "confidence": 0.6,
+        "failure_mode": "exhaustion",
+        "budget_used": 39,
+        "time_seconds": 0.02,
+        "candidates": [
+          "api-gateway",
+          "warehouse-svc",
+          "inventory-cache",
+          "order-processor",
+          "shipping-db"
+        ],
+        "signal_agreement": {
+          "accusation_top": "api-gateway",
+          "recovery_tiebreaker": null,
+          "selected": "api-gateway",
+          "suspicion_scores": {
+            "api-gateway": 1.4455445544554455,
+            "warehouse-svc": 1.3789473684210525,
+            "inventory-cache": 0.9438432835820896,
+            "order-processor": 0.888157894736842,
+            "shipping-db": 0.65
+          }
+        }
+      },
+      {
+        "scenario": "novel_fanout_retry_victim",
+        "category": "error_injection",
+        "predicted": "load-balancer",
+        "expected": [
+          "notification-hub"
+        ],
+        "correct": false,
+        "predicted_rank": 2,
+        "confidence": 0.6,
+        "failure_mode": "exhaustion",
+        "budget_used": 47,
+        "time_seconds": 0.05,
+        "candidates": [
+          "load-balancer",
+          "notification-hub",
+          "billing-engine",
+          "search-index",
+          "recommendation-engine"
+        ],
+        "signal_agreement": {
+          "accusation_top": "load-balancer",
+          "recovery_tiebreaker": null,
+          "selected": "load-balancer",
+          "suspicion_scores": {
+            "load-balancer": 1.4974104631763092,
+            "notification-hub": 1.4186046511627906,
+            "billing-engine": 0.65,
+            "search-index": 0.65,
+            "recommendation-engine": 0.65
+          }
+        }
+      }
+    ]
+  },
+  "per_scenario": [
+    {
+      "scenario": "novel_deep_chain_head_overload",
+      "category": "deployment",
+      "predicted": "api-gateway",
+      "expected": [
+        "api-gateway"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 24,
+      "time_seconds": 0.03,
+      "candidates": [
+        "api-gateway",
+        "order-processor"
+      ],
+      "signal_agreement": {
+        "accusation_top": "api-gateway",
+        "recovery_tiebreaker": null,
+        "selected": "api-gateway",
+        "suspicion_scores": {
+          "api-gateway": 2.4879692011549563,
+          "order-processor": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_deep_chain_leaf_crash",
+      "category": "kill",
+      "predicted": "api-gateway",
+      "expected": [
+        "shipping-db"
+      ],
+      "correct": false,
+      "predicted_rank": 2,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 39,
+      "time_seconds": 0.02,
+      "candidates": [
+        "api-gateway",
+        "shipping-db",
+        "order-processor",
+        "inventory-cache",
+        "warehouse-svc"
+      ],
+      "signal_agreement": {
+        "accusation_top": "api-gateway",
+        "recovery_tiebreaker": null,
+        "selected": "api-gateway",
+        "suspicion_scores": {
+          "api-gateway": 1.4704433497536944,
+          "shipping-db": 1.4500000000000002,
+          "order-processor": 1.0664212548015364,
+          "inventory-cache": 0.9953703703703702,
+          "warehouse-svc": 0.8258456659619451
+        }
+      }
+    },
+    {
+      "scenario": "novel_deep_chain_middle_leak",
+      "category": "exhaustion",
+      "predicted": "inventory-cache",
+      "expected": [
+        "inventory-cache"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 33,
+      "time_seconds": 0.02,
+      "candidates": [
+        "inventory-cache",
+        "api-gateway",
+        "order-processor",
+        "warehouse-svc"
+      ],
+      "signal_agreement": {
+        "accusation_top": "inventory-cache",
+        "recovery_tiebreaker": null,
+        "selected": "inventory-cache",
+        "suspicion_scores": {
+          "inventory-cache": 1.8,
+          "api-gateway": 1.5,
+          "order-processor": 1.1666666666666667,
+          "warehouse-svc": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_deep_chain_silent_killer",
+      "category": "kill",
+      "predicted": "api-gateway",
+      "expected": [
+        "warehouse-svc"
+      ],
+      "correct": false,
+      "predicted_rank": 2,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 39,
+      "time_seconds": 0.02,
+      "candidates": [
+        "api-gateway",
+        "warehouse-svc",
+        "inventory-cache",
+        "order-processor",
+        "shipping-db"
+      ],
+      "signal_agreement": {
+        "accusation_top": "api-gateway",
+        "recovery_tiebreaker": null,
+        "selected": "api-gateway",
+        "suspicion_scores": {
+          "api-gateway": 1.4455445544554455,
+          "warehouse-svc": 1.3789473684210525,
+          "inventory-cache": 0.9438432835820896,
+          "order-processor": 0.888157894736842,
+          "shipping-db": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_diamond_deploy_with_noise",
+      "category": "deployment",
+      "predicted": "cdn-proxy",
+      "expected": [
+        "cdn-proxy",
+        "object-store",
+        "video-transcoder"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 33,
+      "time_seconds": 0.05,
+      "candidates": [
+        "cdn-proxy",
+        "object-store",
+        "video-transcoder",
+        "image-processor"
+      ],
+      "signal_agreement": {
+        "accusation_top": "cdn-proxy",
+        "recovery_tiebreaker": null,
+        "selected": "cdn-proxy",
+        "suspicion_scores": {
+          "cdn-proxy": 2.243332083499685,
+          "object-store": 1.4500000000000002,
+          "video-transcoder": 1.2343771993026338,
+          "image-processor": 1.207291269770496
+        }
+      }
+    },
+    {
+      "scenario": "novel_diamond_one_arm_deploy",
+      "category": "deployment",
+      "predicted": "image-processor",
+      "expected": [
+        "image-processor"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "unknown",
+      "budget_used": 23,
+      "time_seconds": 0.01,
+      "candidates": [
+        "image-processor",
+        "object-store"
+      ],
+      "signal_agreement": {
+        "accusation_top": "image-processor",
+        "recovery_tiebreaker": null,
+        "selected": "image-processor",
+        "suspicion_scores": {
+          "image-processor": 2.4658314350797266,
+          "object-store": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_diamond_shared_dep_latency",
+      "category": "latency",
+      "predicted": "object-store",
+      "expected": [
+        "object-store"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 31,
+      "time_seconds": 0.01,
+      "candidates": [
+        "object-store",
+        "cdn-proxy",
+        "image-processor",
+        "video-transcoder"
+      ],
+      "signal_agreement": {
+        "accusation_top": "object-store",
+        "recovery_tiebreaker": null,
+        "selected": "object-store",
+        "suspicion_scores": {
+          "object-store": 2.6,
+          "cdn-proxy": 1.4977001340319238,
+          "image-processor": 1.2160228619549622,
+          "video-transcoder": 1.1946764211465692
+        }
+      }
+    },
+    {
+      "scenario": "novel_fanout_cascading_kills",
+      "category": "kill",
+      "predicted": "notification-hub",
+      "expected": [
+        "notification-hub",
+        "search-index"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 43,
+      "time_seconds": 0.01,
+      "candidates": [
+        "notification-hub",
+        "search-index",
+        "load-balancer",
+        "billing-engine",
+        "recommendation-engine"
+      ],
+      "signal_agreement": {
+        "accusation_top": "notification-hub",
+        "recovery_tiebreaker": null,
+        "selected": "notification-hub",
+        "suspicion_scores": {
+          "notification-hub": 1.7565217391304349,
+          "search-index": 1.6636363636363638,
+          "load-balancer": 1.4941002949852509,
+          "billing-engine": 0.65,
+          "recommendation-engine": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_fanout_dual_fault",
+      "category": "compound",
+      "predicted": "search-index",
+      "expected": [
+        "billing-engine",
+        "search-index"
+      ],
+      "correct": true,
+      "predicted_rank": 1,
+      "confidence": 0.9,
+      "failure_mode": "exhaustion",
+      "budget_used": 48,
+      "time_seconds": 0.02,
+      "candidates": [
+        "search-index",
+        "billing-engine",
+        "load-balancer",
+        "notification-hub",
+        "recommendation-engine"
+      ],
+      "signal_agreement": {
+        "accusation_top": "search-index",
+        "recovery_tiebreaker": null,
+        "selected": "search-index",
+        "suspicion_scores": {
+          "search-index": 2.6,
+          "billing-engine": 1.9300000000000002,
+          "load-balancer": 1.5,
+          "notification-hub": 0.65,
+          "recommendation-engine": 0.65
+        }
+      }
+    },
+    {
+      "scenario": "novel_fanout_retry_victim",
+      "category": "error_injection",
+      "predicted": "load-balancer",
+      "expected": [
+        "notification-hub"
+      ],
+      "correct": false,
+      "predicted_rank": 2,
+      "confidence": 0.6,
+      "failure_mode": "exhaustion",
+      "budget_used": 47,
+      "time_seconds": 0.05,
+      "candidates": [
+        "load-balancer",
+        "notification-hub",
+        "billing-engine",
+        "search-index",
+        "recommendation-engine"
+      ],
+      "signal_agreement": {
+        "accusation_top": "load-balancer",
+        "recovery_tiebreaker": null,
+        "selected": "load-balancer",
+        "suspicion_scores": {
+          "load-balancer": 1.4974104631763092,
+          "notification-hub": 1.4186046511627906,
+          "billing-engine": 0.65,
+          "search-index": 0.65,
+          "recommendation-engine": 0.65
+        }
+      }
+    }
+  ]
+}

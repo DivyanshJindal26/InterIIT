@@ -1,0 +1,11 @@
+scenario,budget_used,time_seconds,correct
+novel_deep_chain_head_overload,24,0.03,True
+novel_deep_chain_leaf_crash,39,0.02,False
+novel_deep_chain_middle_leak,33,0.02,True
+novel_deep_chain_silent_killer,39,0.02,False
+novel_diamond_deploy_with_noise,33,0.05,True
+novel_diamond_one_arm_deploy,23,0.01,True
+novel_diamond_shared_dep_latency,31,0.01,True
+novel_fanout_cascading_kills,43,0.01,True
+novel_fanout_dual_fault,48,0.02,True
+novel_fanout_retry_victim,47,0.05,False

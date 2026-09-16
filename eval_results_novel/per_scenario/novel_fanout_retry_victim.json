@@ -1,0 +1,33 @@
+{
+  "scenario": "novel_fanout_retry_victim",
+  "category": "error_injection",
+  "predicted": "load-balancer",
+  "expected": [
+    "notification-hub"
+  ],
+  "correct": false,
+  "predicted_rank": 2,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 47,
+  "time_seconds": 0.05,
+  "candidates": [
+    "load-balancer",
+    "notification-hub",
+    "billing-engine",
+    "search-index",
+    "recommendation-engine"
+  ],
+  "signal_agreement": {
+    "accusation_top": "load-balancer",
+    "recovery_tiebreaker": null,
+    "selected": "load-balancer",
+    "suspicion_scores": {
+      "load-balancer": 1.4974104631763092,
+      "notification-hub": 1.4186046511627906,
+      "billing-engine": 0.65,
+      "search-index": 0.65,
+      "recommendation-engine": 0.65
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "scenario": "novel_deep_chain_leaf_crash",
+  "category": "kill",
+  "predicted": "api-gateway",
+  "expected": [
+    "shipping-db"
+  ],
+  "correct": false,
+  "predicted_rank": 2,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 39,
+  "time_seconds": 0.02,
+  "candidates": [
+    "api-gateway",
+    "shipping-db",
+    "order-processor",
+    "inventory-cache",
+    "warehouse-svc"
+  ],
+  "signal_agreement": {
+    "accusation_top": "api-gateway",
+    "recovery_tiebreaker": null,
+    "selected": "api-gateway",
+    "suspicion_scores": {
+      "api-gateway": 1.4704433497536944,
+      "shipping-db": 1.4500000000000002,
+      "order-processor": 1.0664212548015364,
+      "inventory-cache": 0.9953703703703702,
+      "warehouse-svc": 0.8258456659619451
+    }
+  }
+}

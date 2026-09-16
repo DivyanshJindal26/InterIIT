@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from simulator.models import FaultEvent, ScenarioConfig
+from simulator.novel_scenarios import NOVEL_SCENARIOS
 
 
 def deployment_cascade() -> ScenarioConfig:
@@ -942,6 +943,7 @@ SCENARIOS: dict[str, callable] = {
     "the_perfect_storm": the_perfect_storm,
     "false_recovery": false_recovery,
     "whack_a_mole": whack_a_mole,
+    **NOVEL_SCENARIOS,
 }
 
 
