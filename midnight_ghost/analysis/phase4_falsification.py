@@ -58,6 +58,7 @@ def falsify_hypotheses(
         if c.recovery_info and c.recovery_info.recovery_type == 'real' and c.recovery_info.recovery_time_ns:
             recovery_times[c.service] = c.recovery_info.recovery_time_ns
 
+    # 5s tolerance avoids false falsification from metric sampling jitter
     RECOVERY_TOLERANCE_NS = 5 * 1_000_000_000
 
     for candidate in candidates:

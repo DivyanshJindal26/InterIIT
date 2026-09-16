@@ -10,7 +10,9 @@ from midnight_ghost.query.types import AnomalySummary, TimeRange
 from midnight_ghost.analysis.types import IncidentWindow, Phase0Result
 
 
+# 10% error rate across all services = incident started
 ALERT_THRESHOLD = 0.10
+# Services below this anomaly score are considered healthy
 ANOMALY_THRESHOLD = 0.3
 
 
