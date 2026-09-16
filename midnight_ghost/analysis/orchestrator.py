@@ -116,7 +116,6 @@ def run_rca(
         query_api,
         candidates,
         recovery_order,
-        phase1.signal_weights,
         phase0.incident_window,
         phase1.failure_mode,
     )

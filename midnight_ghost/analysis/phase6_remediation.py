@@ -17,6 +17,7 @@ ACTION_CATALOG = {
     'unknown': {'action': 'isolate', 'params': {'drain': True}},
 }
 
+# Remediation is unsafe if it affects >60% of services
 BLAST_THRESHOLD = 0.6
 
 

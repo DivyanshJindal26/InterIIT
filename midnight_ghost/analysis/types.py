@@ -101,6 +101,5 @@ class Phase05Result:
 @dataclass
 class Phase1Result:
     failure_mode: str
-    signal_weights: dict[str, float]
     initial_spike: float
     sustained_slope: float

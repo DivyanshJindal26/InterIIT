@@ -4,19 +4,12 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from midnight_ghost.query.api import QueryAPI
-from midnight_ghost.query.types import TimeRange
 from midnight_ghost.analysis.types import BlameEdge, IncidentWindow, Phase1Result
 
+# 5x the average error rate in the first minute = spike
 SPIKE_THRESHOLD = 5.0
+# Second-half growth > 50% over first-half = escalation
 SLOPE_THRESHOLD = 0.5
-
-WEIGHT_TABLE = {
-    'deployment': {'accusation': 1.0, 'recovery': 0.6, 'wavefront': 0.6},
-    'exhaustion': {'accusation': 0.3, 'recovery': 0.6, 'wavefront': 1.0},
-    'external': {'accusation': 1.0, 'recovery': 0.3, 'wavefront': 0.6},
-    'drift': {'accusation': 0.6, 'recovery': 0.6, 'wavefront': 1.0},
-    'unknown': {'accusation': 0.7, 'recovery': 0.7, 'wavefront': 0.7},
-}
 
 
 def _minute_key(timestamp_ns: int) -> str:
@@ -82,7 +75,6 @@ def detect_failure_mode(
 
     return Phase1Result(
         failure_mode=mode,
-        signal_weights=WEIGHT_TABLE.get(mode, WEIGHT_TABLE['unknown']),
         initial_spike=initial_spike,
         sustained_slope=sustained_slope,
     )

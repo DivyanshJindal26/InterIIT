@@ -9,7 +9,14 @@ from midnight_ghost.analysis.types import (
 )
 from midnight_ghost.query.types import AnomalySummary, TimeRange
 
+# Design doc: config change makes a service 2.5x more suspicious
 ALPHA = 1.5
+# Anomaly score floor for a service to register as distressed
+ANOMALY_FLOOR = 0.3
+# Net blame contribution to suspicion (blame is a modifier, not the primary signal)
+BLAME_WEIGHT = 0.5
+# OOMKilled services get at least this much added suspicion
+KILL_BOOST = 0.8
 
 CONFIG_CHANGE_REASONS = {
     'Deployed', 'Started', 'ConfigChanged', 'Rolled',
@@ -50,7 +57,7 @@ def _detect_killed_services(
             ts = event.get('timestamp_ns', 0)
             if incident_window.incident.start_ns <= ts <= incident_window.incident.end_ns:
                 svc = event.get('service', '')
-                if svc and svc != 'logging-svc':
+                if svc:
                     killed.add(svc)
     return killed
 
@@ -60,6 +67,8 @@ def _get_metric_distress(
     service: str,
     incident_window: IncidentWindow,
 ) -> float:
+    # Captures silent killers: services causing latency/status problems
+    # without producing ERROR log entries (e.g., db with 200x latency).
     distress = 0.0
 
     lat_series = query_api.get_metric_series(
@@ -119,15 +128,13 @@ def score_accusations(
         1.0,
     )
 
-    # Pre-compute metric distress for services with low anomaly
-    # (silent killers like latency spikes with no error logs)
     metric_distress_map: dict[str, float] = {}
     if query_api:
         for service in cascade_participants:
             a = 0.0
             if anomaly_summaries and service in anomaly_summaries:
                 a = anomaly_summaries[service].anomaly_score
-            if a < 0.3:
+            if a < ANOMALY_FLOOR:
                 metric_distress_map[service] = _get_metric_distress(
                     query_api, service, incident_window,
                 )
@@ -147,49 +154,40 @@ def score_accusations(
         metric_distress = metric_distress_map.get(service, 0.0)
         effective_anomaly = max(anomaly_score, metric_distress * 0.8)
 
-        # Net blame: inbound (others blame me) minus outbound (I blame others)
-        # Root cause = high inbound, low outbound
-        # Victim = low inbound, high outbound
         ib = inbound_blame.get(service, 0) / max_blame
         ob = outbound_blame.get(service, 0) / max_blame
         net_blame = ib - ob
 
-        # Suspicion = anomaly score adjusted by net blame direction
-        suspicion = effective_anomaly + net_blame * 0.5
+        suspicion = effective_anomaly + net_blame * BLAME_WEIGHT
 
-        # Config change multiplier
         if has_cc:
             suspicion *= (1 + ALPHA)
 
-        # K8s kill boost — killed services are strong root cause candidates
         if was_killed:
-            suspicion = max(suspicion, effective_anomaly + 0.8)
+            suspicion = max(suspicion, effective_anomaly + KILL_BOOST)
 
-        # Dependency distress: if this service has high metric distress and
-        # an anomalous caller depends on it, that's implicit blame
-        if metric_distress > 0.5 and anomaly_score < 0.1:
+        # Dependency distress: a service with high metric distress but no
+        # log anomaly, whose caller IS anomalous, is a silent root cause
+        if metric_distress > ANOMALY_FLOOR and anomaly_score < 0.1:
             for caller, callees in call_graph.items():
                 if service in callees:
                     caller_anomaly = 0.0
                     if anomaly_summaries and caller in anomaly_summaries:
                         caller_anomaly = anomaly_summaries[caller].anomaly_score
-                    if caller_anomaly > 0.3:
-                        suspicion += metric_distress * 0.5
+                    if caller_anomaly > ANOMALY_FLOOR:
+                        suspicion += metric_distress * BLAME_WEIGHT
                         break
 
-        # Entry-point origin: a service with no callers in the call graph
-        # can't have inherited a fault from upstream. If it's anomalous and
-        # has outbound blame, it's the cascade origin, not a victim —
-        # its outbound blame means it sent bad traffic, not that it suffered
-        # from dependencies. Neutralize the blame penalty and reinterpret.
+        # Entry-point origin: no callers means the fault can't have been
+        # inherited from upstream — outbound blame = it caused downstream
+        # errors, not that it suffered from dependencies
         has_callers = any(service in callees for callees in call_graph.values())
         if (not has_callers
-                and effective_anomaly > 0.5
-                and ob > 0.3
+                and effective_anomaly > ANOMALY_FLOOR
+                and ob > ANOMALY_FLOOR
                 and ib == 0):
             suspicion += ob
 
-        # Services with no errors and no metric distress are bystanders
         if error_count == 0 and effective_anomaly < 0.1 and not was_killed:
             suspicion *= 0.01
 

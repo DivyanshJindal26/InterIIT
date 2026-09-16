@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
-
 from midnight_ghost.query.api import QueryAPI
 from midnight_ghost.analysis.types import (
     CausalCandidate,
@@ -45,7 +43,6 @@ def converge(
     query_api: QueryAPI,
     candidates: list[CausalCandidate],
     recovery_order: list[CausalCandidate],
-    signal_weights: dict[str, float],
     incident_window: IncidentWindow,
     failure_mode: str,
 ) -> tuple[RootCause, dict]:
@@ -70,7 +67,7 @@ def converge(
     top = ranking[0]
     runner_up = ranking[1] if len(ranking) > 1 else None
 
-    # If top candidate is clearly ahead, high confidence
+    # 1.2x = 20% margin before declaring a clear winner
     if runner_up is None or top.suspicion_score > runner_up.suspicion_score * 1.2:
         top_service = top.service
         confidence = 0.9

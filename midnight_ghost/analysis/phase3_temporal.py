@@ -4,9 +4,13 @@ from midnight_ghost.query.api import QueryAPI
 from midnight_ghost.query.types import AnomalySummary, TimeRange
 from midnight_ghost.analysis.types import CausalCandidate, IncidentWindow, RecoveryInfo
 
+# Error rate must drop below 2x baseline to count as recovered
 RECOVERY_ERROR_THRESHOLD = 2.0
+# Recovery must hold for 30s to be considered real (not a flicker)
 RECOVERY_SUSTAIN_SECONDS = 30
+# Transition under 2s = step function (deploy/kill); over = gradual decay
 STEP_TRANSITION_SECONDS = 2
+# Throughput must stay above 70% to rule out "recovered by losing traffic"
 THROUGHPUT_MAINTAIN_RATIO = 0.7
 
 
