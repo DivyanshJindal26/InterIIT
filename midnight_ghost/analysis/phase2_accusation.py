@@ -39,25 +39,20 @@ def _detect_config_changes(
     return changed
 
 
-def _compute_depth(service: str, call_graph: dict[str, list[str]]) -> int:
-    callers: dict[str, list[str]] = defaultdict(list)
-    for caller, callees in call_graph.items():
-        for callee in callees:
-            callers[callee].append(caller)
-
-    if service not in callers:
-        if service in call_graph and call_graph[service]:
-            return 0
-        return 1
-
-    depth = 0
-    visited = set()
-    current = service
-    while current in callers and current not in visited:
-        visited.add(current)
-        current = callers[current][0]
-        depth += 1
-    return depth
+def _detect_killed_services(
+    k8s_events: list[dict],
+    incident_window: IncidentWindow,
+) -> set[str]:
+    killed: set[str] = set()
+    for event in k8s_events:
+        reason = event.get('reason', '')
+        if reason in KILL_REASONS:
+            ts = event.get('timestamp_ns', 0)
+            if incident_window.incident.start_ns <= ts <= incident_window.incident.end_ns:
+                svc = event.get('service', '')
+                if svc and svc != 'logging-svc':
+                    killed.add(svc)
+    return killed
 
 
 def _get_metric_distress(
@@ -65,7 +60,6 @@ def _get_metric_distress(
     service: str,
     incident_window: IncidentWindow,
 ) -> float:
-    from midnight_ghost.query.types import TimeRange
     distress = 0.0
 
     lat_series = query_api.get_metric_series(
@@ -103,88 +97,89 @@ def score_accusations(
     anomaly_summaries: dict[str, AnomalySummary] | None = None,
     query_api=None,
 ) -> list[CausalCandidate]:
-    services_cfg = scenario_config.get('services', {})
     call_graph = scenario_config.get('call_graph', {})
 
     config_changes = _detect_config_changes(k8s_events, incident_window)
+    killed_services = _detect_killed_services(k8s_events, incident_window)
 
-    killed_services: set[str] = set()
-    for event in k8s_events:
-        reason = event.get('reason', '')
-        if reason in KILL_REASONS:
-            ts = event.get('timestamp_ns', 0)
-            if incident_window.incident.start_ns <= ts <= incident_window.incident.end_ns:
-                svc = event.get('service', '')
-                if svc and svc not in ('logging-svc',):
-                    killed_services.add(svc)
-
+    # Aggregate blame edges per accused and per accuser
+    inbound_blame: dict[str, float] = defaultdict(float)
+    outbound_blame: dict[str, float] = defaultdict(float)
     blamed_by_map: dict[str, list[BlameEdge]] = defaultdict(list)
+
     for edge in blame_edges:
+        inbound_blame[edge.accused] += edge.weight
+        outbound_blame[edge.accuser] += edge.weight
         blamed_by_map[edge.accused].append(edge)
 
-    mean_error_rates: dict[str, float] = {}
+    # Normalize blame so it's comparable across scenarios
+    max_blame = max(
+        max(inbound_blame.values(), default=0),
+        max(outbound_blame.values(), default=0),
+        1.0,
+    )
+
+    # Pre-compute metric distress for services with low anomaly
+    # (silent killers like latency spikes with no error logs)
+    metric_distress_map: dict[str, float] = {}
     if query_api:
         for service in cascade_participants:
-            err_series = query_api.get_metric_series(
-                service, 'error_rate', incident_window.incident,
-            )
-            if err_series:
-                mean_error_rates[service] = sum(v for _, v in err_series) / len(err_series)
+            a = 0.0
+            if anomaly_summaries and service in anomaly_summaries:
+                a = anomaly_summaries[service].anomaly_score
+            if a < 0.3:
+                metric_distress_map[service] = _get_metric_distress(
+                    query_api, service, incident_window,
+                )
 
     candidates = []
     for service in cascade_participants:
         has_cc = service in config_changes
+        was_killed = service in killed_services
 
+        # Primary signal: anomaly score from log error ratio
         anomaly_score = 0.0
         error_count = 0
         if anomaly_summaries and service in anomaly_summaries:
             anomaly_score = anomaly_summaries[service].anomaly_score
             error_count = anomaly_summaries[service].error_count
 
-        depth = _compute_depth(service, call_graph)
-
-        metric_distress = 0.0
-        if query_api and anomaly_score < 0.3:
-            metric_distress = _get_metric_distress(
-                query_api, service, incident_window,
-            )
-
+        metric_distress = metric_distress_map.get(service, 0.0)
         effective_anomaly = max(anomaly_score, metric_distress * 0.8)
 
-        suspicion = effective_anomaly
+        # Net blame: inbound (others blame me) minus outbound (I blame others)
+        # Root cause = high inbound, low outbound
+        # Victim = low inbound, high outbound
+        ib = inbound_blame.get(service, 0) / max_blame
+        ob = outbound_blame.get(service, 0) / max_blame
+        net_blame = ib - ob
 
-        suspicion += depth * 0.02
+        # Suspicion = anomaly score adjusted by net blame direction
+        suspicion = effective_anomaly + net_blame * 0.5
 
-        was_killed = service in killed_services
-
+        # Config change multiplier
         if has_cc:
             suspicion *= (1 + ALPHA)
 
+        # K8s kill boost — killed services are strong root cause candidates
         if was_killed:
             suspicion = max(suspicion, effective_anomaly + 0.8)
-            suspicion += depth * 0.2
 
+        # Dependency distress: if this service has high metric distress and
+        # an anomalous caller depends on it, that's implicit blame
+        if metric_distress > 0.5 and anomaly_score < 0.1:
+            for caller, callees in call_graph.items():
+                if service in callees:
+                    caller_anomaly = 0.0
+                    if anomaly_summaries and caller in anomaly_summaries:
+                        caller_anomaly = anomaly_summaries[caller].anomaly_score
+                    if caller_anomaly > 0.3:
+                        suspicion += metric_distress * 0.5
+                        break
+
+        # Services with no errors and no metric distress are bystanders
         if error_count == 0 and effective_anomaly < 0.1 and not was_killed:
             suspicion *= 0.01
-
-        blame_from_anomalous = 0.0
-        for edge in blamed_by_map.get(service, []):
-            accuser_anomaly = 0.0
-            if anomaly_summaries and edge.accuser in anomaly_summaries:
-                accuser_anomaly = anomaly_summaries[edge.accuser].anomaly_score
-            credibility = 1.0
-            if accuser_anomaly > effective_anomaly + 0.01:
-                ratio = effective_anomaly / max(accuser_anomaly, 0.01)
-                credibility = ratio * ratio
-            capped_weight = min(edge.weight, 5.0)
-            blame_from_anomalous += capped_weight * edge.confidence * accuser_anomaly * credibility
-
-        suspicion += blame_from_anomalous * 0.05
-
-        if service in mean_error_rates:
-            mer = mean_error_rates[service]
-            if mer > 0.5:
-                suspicion += mer * 0.3
 
         candidates.append(CausalCandidate(
             service=service,
