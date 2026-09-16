@@ -30,6 +30,26 @@ def main() -> None:
         "--seed", type=int, default=None,
         help="Override scenario seed",
     )
+    parser.add_argument(
+        "--scale", type=float, default=1.0,
+        help="Scale factor for request rate (e.g. --scale 1000 = 1000x more requests)",
+    )
+    parser.add_argument(
+        "--duration", type=int, default=None,
+        help="Override scenario duration in milliseconds (e.g. --duration 3600000 for 1 hour)",
+    )
+    parser.add_argument(
+        "--pad-logs", action="store_true",
+        help="Add realistic padding to logs (stack traces, request bodies, headers) for bulk",
+    )
+    parser.add_argument(
+        "--replicas", type=int, default=1,
+        help="Simulate N replicas of each pod (multiplies logs/metrics N times)",
+    )
+    parser.add_argument(
+        "--streaming", action="store_true",
+        help="Stream output to disk as it's generated instead of buffering in memory",
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -47,14 +67,32 @@ def main() -> None:
 
     if args.seed is not None:
         scenario.seed = args.seed
+    if args.duration is not None:
+        scenario.duration_ms = args.duration
+    if args.scale != 1.0:
+        scenario.request_rate *= args.scale
 
     print(f"Running scenario: {scenario.name}")
-    print(f"  Duration: {scenario.duration_ms}ms")
+    print(f"  Duration: {scenario.duration_ms}ms ({scenario.duration_ms / 1000:.0f}s)")
     print(f"  Seed: {scenario.seed}")
     print(f"  Request rate: {scenario.request_rate}/tick")
     print(f"  Faults: {len(scenario.faults)}")
+    if args.scale != 1.0:
+        print(f"  Scale: {args.scale}x")
+    if args.replicas > 1:
+        print(f"  Replicas: {args.replicas}")
+    if args.pad_logs:
+        print(f"  Log padding: enabled")
+    if args.streaming:
+        print(f"  Streaming: enabled")
 
-    engine = SimulationEngine(scenario)
+    engine = SimulationEngine(
+        scenario,
+        pad_logs=args.pad_logs,
+        replicas=args.replicas,
+        streaming=args.streaming,
+        output_dir=args.output if args.streaming else None,
+    )
     t0 = time.monotonic()
     engine.run()
     elapsed = time.monotonic() - t0
@@ -68,8 +106,12 @@ def main() -> None:
     print(f"  Log lines: {total_logs}")
     print(f"  Metric points: {len(engine.metrics_buffer)}")
 
-    engine.write_output(args.output)
-    print(f"\nOutput written to {args.output}/{scenario.name}/")
+    if args.streaming:
+        engine.finalize_streaming()
+        print(f"\nStreaming output written to {args.output}/{scenario.name}/")
+    else:
+        engine.write_output(args.output)
+        print(f"\nOutput written to {args.output}/{scenario.name}/")
 
 
 if __name__ == "__main__":

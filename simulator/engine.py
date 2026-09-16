@@ -31,11 +31,22 @@ DEAD_RESTART_TICKS = 30
 
 
 class SimulationEngine:
-    def __init__(self, scenario: ScenarioConfig):
+    def __init__(
+        self,
+        scenario: ScenarioConfig,
+        pad_logs: bool = False,
+        replicas: int = 1,
+        streaming: bool = False,
+        output_dir: str | None = None,
+    ):
         self.rng = random.Random(scenario.seed)
         self.scenario = scenario
         self.time_ms = 0
         self.tick_count = 0
+        self.pad_logs = pad_logs
+        self.replicas = max(1, replicas)
+        self.streaming = streaming
+        self.output_dir = output_dir
 
         self.configs: dict[str, ServiceConfig] = {}
         self.states: dict[str, ServiceState] = {}
@@ -53,6 +64,10 @@ class SimulationEngine:
         self.active_faults: list[FaultEvent] = []
 
         self._original_configs: dict[str, dict] = {}
+
+        self._stream_files: dict[str, object] = {}
+        if self.streaming and self.output_dir:
+            self._init_streaming()
 
     def _init_services(self) -> None:
         for svc in SERVICE_DEFAULTS:
@@ -74,6 +89,8 @@ class SimulationEngine:
         self._update_statuses()
         self._emit_metrics()
         self._generate_noise()
+        if self.streaming:
+            self._flush_streaming()
 
     def _wall_time(self, service_name: str) -> int:
         zone = self.configs[service_name].zone
@@ -506,36 +523,76 @@ class SimulationEngine:
                 message=f"Pod {config.pod_name} evicted: OOMKilled (flapper)",
             ))
 
-    def write_output(self, output_dir: str) -> None:
-        scenario_dir = os.path.join(output_dir, self.scenario.name)
+    def _init_streaming(self) -> None:
+        scenario_dir = os.path.join(self.output_dir, self.scenario.name)
         for subdir in ["traces", "logs", "metrics", "k8s_events"]:
             os.makedirs(os.path.join(scenario_dir, subdir), exist_ok=True)
+        self._stream_files["traces"] = open(
+            os.path.join(scenario_dir, "traces", "traces.jsonl"), "w",
+        )
+        self._stream_files["metrics"] = open(
+            os.path.join(scenario_dir, "metrics", "metrics.jsonl"), "w",
+        )
+        self._stream_files["events"] = open(
+            os.path.join(scenario_dir, "k8s_events", "events.jsonl"), "w",
+        )
+        for svc_name in self.configs:
+            for r in range(self.replicas):
+                suffix = f"-{r}" if self.replicas > 1 else ""
+                key = f"log_{svc_name}{suffix}"
+                fname = f"{svc_name}{suffix}.log"
+                self._stream_files[key] = open(
+                    os.path.join(scenario_dir, "logs", fname), "w",
+                )
 
-        trace_path = os.path.join(scenario_dir, "traces", "traces.jsonl")
-        with open(trace_path, "w") as f:
-            write_traces(self.all_spans, self.error_trace_ids, self.rng, f)
-
+    def _flush_streaming(self) -> None:
+        if not self.streaming:
+            return
         for svc_name, lines in self.log_buffers.items():
-            log_path = os.path.join(scenario_dir, "logs", f"{svc_name}.log")
-            with open(log_path, "w") as f:
-                f.write("\n".join(lines))
-                if lines:
-                    f.write("\n")
+            if not lines:
+                continue
+            for r in range(self.replicas):
+                suffix = f"-{r}" if self.replicas > 1 else ""
+                key = f"log_{svc_name}{suffix}"
+                f = self._stream_files.get(key)
+                if f:
+                    for line in lines:
+                        if self.replicas > 1:
+                            line = line.replace(
+                                self.configs[svc_name].pod_name,
+                                f"{self.configs[svc_name].pod_name}-r{r}",
+                            )
+                        if self.pad_logs:
+                            line = self._pad_log_line(line, svc_name)
+                        f.write(line + "\n")
+        for svc_name in self.log_buffers:
+            self.log_buffers[svc_name] = []
 
-        metrics_path = os.path.join(scenario_dir, "metrics", "metrics.jsonl")
-        with open(metrics_path, "w") as f:
+        mf = self._stream_files.get("metrics")
+        if mf:
             for m in self.metrics_buffer:
-                entry = {
-                    "timestamp_ms": m.timestamp_ms,
-                    "service": m.service,
-                    "metric": m.metric,
-                    "value": m.value,
-                    "labels": m.labels,
-                }
-                f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+                for r in range(self.replicas):
+                    suffix = f"-r{r}" if self.replicas > 1 else ""
+                    entry = {
+                        "timestamp_ms": m.timestamp_ms,
+                        "service": m.service,
+                        "metric": m.metric,
+                        "value": m.value,
+                        "labels": {
+                            **m.labels,
+                            "pod": m.labels.get("pod", "") + suffix,
+                        } if suffix else m.labels,
+                    }
+                    mf.write(json.dumps(entry, separators=(",", ":")) + "\n")
+            self.metrics_buffer = []
 
-        events_path = os.path.join(scenario_dir, "k8s_events", "events.jsonl")
-        with open(events_path, "w") as f:
+    def finalize_streaming(self) -> None:
+        self._flush_streaming()
+        tf = self._stream_files.get("traces")
+        if tf:
+            write_traces(self.all_spans, self.error_trace_ids, self.rng, tf)
+        ef = self._stream_files.get("events")
+        if ef:
             for e in self.k8s_events:
                 entry = {
                     "timestamp_ms": e.timestamp_ms,
@@ -545,8 +602,111 @@ class SimulationEngine:
                     "reason": e.reason,
                     "message": e.message,
                 }
-                f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+                ef.write(json.dumps(entry, separators=(",", ":")) + "\n")
+        scenario_dir = os.path.join(self.output_dir, self.scenario.name)
+        self._write_ground_truth(scenario_dir)
+        self._write_scenario_config(scenario_dir)
+        for f in self._stream_files.values():
+            f.close()
+        self._stream_files = {}
 
+    def _pad_log_line(self, line: str, svc_name: str) -> str:
+        config = self.configs[svc_name]
+        padding_parts = []
+
+        headers = {
+            "X-Request-Id": self._gen_trace_id(),
+            "X-Forwarded-For": f"10.{self.rng.randint(0,255)}.{self.rng.randint(0,255)}.{self.rng.randint(1,254)}",
+            "X-Forwarded-Proto": "https",
+            "X-Real-IP": f"172.16.{self.rng.randint(0,255)}.{self.rng.randint(1,254)}",
+            "Host": f"{svc_name}.prod.svc.cluster.local",
+            "User-Agent": self.rng.choice([
+                "go-http-client/1.1",
+                "Java/17.0.2",
+                "python-requests/2.28.1",
+                "grpc-go/1.53.0",
+                "envoy/1.25.0",
+            ]),
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.{self._gen_trace_id()}.{self._gen_trace_id()}",
+            "X-B3-TraceId": self._gen_trace_id(),
+            "X-B3-SpanId": self._gen_span_id(),
+            "X-B3-Sampled": "1",
+            "X-Envoy-Expected-Rq-Timeout-Ms": str(self.rng.choice([1000, 3000, 5000, 10000])),
+        }
+        padding_parts.append(f" headers={json.dumps(headers)}")
+
+        bodies = [
+            {"transaction_id": f"txn_{self._gen_span_id()}", "amount": self.rng.randint(100, 99999) / 100, "currency": "USD", "merchant_id": f"m_{self.rng.randint(1000,9999)}", "card_last4": f"{self.rng.randint(1000,9999)}", "timestamp": self.time_ms},
+            {"user_id": f"usr_{self._gen_span_id()}", "session_id": f"sess_{self._gen_trace_id()}", "action": self.rng.choice(["login", "verify", "refresh", "logout"]), "ip": f"10.{self.rng.randint(0,255)}.{self.rng.randint(0,255)}.{self.rng.randint(1,254)}"},
+            {"query": f"SELECT * FROM {self.rng.choice(['users','transactions','sessions','audit_log','payments'])} WHERE id = '{self._gen_span_id()}' AND created_at > NOW() - INTERVAL '24 HOURS' ORDER BY created_at DESC LIMIT 100", "params": [self._gen_span_id(), self.time_ms]},
+        ]
+        padding_parts.append(f" body={json.dumps(self.rng.choice(bodies))}")
+
+        if "ERROR" in line or "error" in line:
+            lang = config.language
+            if lang == "java":
+                frames = [
+                    "com.payments.service.TransactionService.processPayment(TransactionService.java:{})".format(self.rng.randint(80, 300)),
+                    "com.payments.handler.PaymentHandler.handle(PaymentHandler.java:{})".format(self.rng.randint(40, 150)),
+                    "com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:{})".format(self.rng.randint(100, 200)),
+                    "com.zaxxer.hikari.pool.PoolBase.newConnection(PoolBase.java:{})".format(self.rng.randint(50, 100)),
+                    "java.net.Socket.connect(Socket.java:{})".format(self.rng.randint(500, 700)),
+                    "sun.security.ssl.SSLSocketImpl.connect(SSLSocketImpl.java:{})".format(self.rng.randint(200, 400)),
+                    "org.apache.http.impl.conn.DefaultHttpClientConnectionOperator.connect(DefaultHttpClientConnectionOperator.java:{})".format(self.rng.randint(100, 200)),
+                    "io.netty.channel.AbstractChannelHandlerContext.invokeChannelRead(AbstractChannelHandlerContext.java:{})".format(self.rng.randint(300, 500)),
+                    "io.grpc.internal.ServerCallImpl.close(ServerCallImpl.java:{})".format(self.rng.randint(100, 200)),
+                    "java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:{})".format(self.rng.randint(1000, 1200)),
+                    "java.lang.Thread.run(Thread.java:{})".format(self.rng.randint(700, 900)),
+                ]
+                n_frames = self.rng.randint(5, len(frames))
+                stack = "\n".join(f"\tat {f}" for f in self.rng.sample(frames, n_frames))
+                padding_parts.append(f"\n{stack}")
+            elif lang == "go":
+                frames = [
+                    f"goroutine {self.rng.randint(1, 500)} [running]:",
+                    f"main.handleRequest(0x{self.rng.randint(0xc000000000, 0xc000ffffff):x}, 0x{self.rng.randint(0xc000000000, 0xc000ffffff):x})",
+                    f"\t/app/cmd/server/handler.go:{self.rng.randint(50, 300)}",
+                    f"net/http.(*ServeMux).ServeHTTP(0x{self.rng.randint(0xc000000000, 0xc000ffffff):x})",
+                    f"\t/usr/local/go/src/net/http/server.go:{self.rng.randint(2000, 3000)}",
+                    f"google.golang.org/grpc.(*Server).handleStream(0x{self.rng.randint(0xc000000000, 0xc000ffffff):x})",
+                    f"\t/go/pkg/mod/google.golang.org/grpc@v1.53.0/server.go:{self.rng.randint(1500, 2000)}",
+                    f"runtime.goexit()",
+                    f"\t/usr/local/go/src/runtime/asm_amd64.s:1598",
+                ]
+                stack = "\n".join(frames)
+                padding_parts.append(f"\n{stack}")
+            elif lang == "python":
+                frames = [
+                    'Traceback (most recent call last):',
+                    f'  File "/app/{svc_name}/handler.py", line {self.rng.randint(50, 200)}, in handle_request',
+                    f'    result = await self.process(request)',
+                    f'  File "/app/{svc_name}/service.py", line {self.rng.randint(80, 300)}, in process',
+                    f'    response = await self.client.send(payload)',
+                    f'  File "/usr/lib/python3.10/asyncio/tasks.py", line {self.rng.randint(200, 400)}, in wait_for',
+                    f'    return fut.result()',
+                    f'  File "/app/{svc_name}/client.py", line {self.rng.randint(30, 100)}, in send',
+                    f'    raise ConnectionError("Connection pool exhausted")',
+                    f'ConnectionError: Connection pool exhausted',
+                ]
+                stack = "\n".join(frames)
+                padding_parts.append(f"\n{stack}")
+
+        envoy_meta = {
+            "upstream_cluster": f"outbound|8080||{svc_name}.prod.svc.cluster.local",
+            "route_name": "default",
+            "downstream_local_address": f"10.0.0.{self.rng.randint(1, 20)}:{self.rng.randint(30000, 65000)}",
+            "upstream_host": f"10.0.0.{self.rng.randint(1, 20)}:{self.rng.randint(8080, 8090)}",
+            "response_flags": self.rng.choice(["", "-", "UO", "URX", "UF", "UT"]),
+            "connection_termination_details": "",
+            "x_envoy_upstream_service_time": str(self.rng.randint(1, 5000)),
+        }
+        padding_parts.append(f" envoy={json.dumps(envoy_meta)}")
+
+        return line + "".join(padding_parts)
+
+    def _write_ground_truth(self, scenario_dir: str) -> None:
         gt_path = os.path.join(scenario_dir, "ground_truth.json")
         ground_truth = {
             "scenario": self.scenario.name,
@@ -563,6 +723,7 @@ class SimulationEngine:
         with open(gt_path, "w") as f:
             json.dump(ground_truth, f, indent=2)
 
+    def _write_scenario_config(self, scenario_dir: str) -> None:
         sc_path = os.path.join(scenario_dir, "scenario_config.json")
         sc = {
             "name": self.scenario.name,
@@ -590,3 +751,62 @@ class SimulationEngine:
         }
         with open(sc_path, "w") as f:
             json.dump(sc, f, indent=2)
+
+    def write_output(self, output_dir: str) -> None:
+        scenario_dir = os.path.join(output_dir, self.scenario.name)
+        for subdir in ["traces", "logs", "metrics", "k8s_events"]:
+            os.makedirs(os.path.join(scenario_dir, subdir), exist_ok=True)
+
+        trace_path = os.path.join(scenario_dir, "traces", "traces.jsonl")
+        with open(trace_path, "w") as f:
+            write_traces(self.all_spans, self.error_trace_ids, self.rng, f)
+
+        for svc_name, lines in self.log_buffers.items():
+            for r in range(self.replicas):
+                suffix = f"-r{r}" if self.replicas > 1 else ""
+                log_path = os.path.join(
+                    scenario_dir, "logs", f"{svc_name}{suffix}.log",
+                )
+                with open(log_path, "w") as f:
+                    for line in lines:
+                        if self.replicas > 1:
+                            line = line.replace(
+                                self.configs[svc_name].pod_name,
+                                f"{self.configs[svc_name].pod_name}-r{r}",
+                            )
+                        if self.pad_logs:
+                            line = self._pad_log_line(line, svc_name)
+                        f.write(line + "\n")
+
+        metrics_path = os.path.join(scenario_dir, "metrics", "metrics.jsonl")
+        with open(metrics_path, "w") as f:
+            for m in self.metrics_buffer:
+                for r in range(self.replicas):
+                    suffix = f"-r{r}" if self.replicas > 1 else ""
+                    entry = {
+                        "timestamp_ms": m.timestamp_ms,
+                        "service": m.service,
+                        "metric": m.metric,
+                        "value": m.value,
+                        "labels": {
+                            **m.labels,
+                            "pod": m.labels.get("pod", "") + suffix,
+                        } if suffix else m.labels,
+                    }
+                    f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+        events_path = os.path.join(scenario_dir, "k8s_events", "events.jsonl")
+        with open(events_path, "w") as f:
+            for e in self.k8s_events:
+                entry = {
+                    "timestamp_ms": e.timestamp_ms,
+                    "service": e.service,
+                    "pod_name": e.pod_name,
+                    "event_type": e.event_type,
+                    "reason": e.reason,
+                    "message": e.message,
+                }
+                f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+        self._write_ground_truth(scenario_dir)
+        self._write_scenario_config(scenario_dir)
