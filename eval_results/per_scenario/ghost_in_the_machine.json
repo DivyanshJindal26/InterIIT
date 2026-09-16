@@ -1,0 +1,37 @@
+{
+  "scenario": "ghost_in_the_machine",
+  "category": "deployment",
+  "predicted": "payments",
+  "expected": [
+    "auth",
+    "db",
+    "payments",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 48,
+  "time_seconds": 0.02,
+  "candidates": [
+    "payments",
+    "redis",
+    "db",
+    "gateway",
+    "auth"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 3.2053360686590313,
+      "redis": 2.6,
+      "db": 1.5894736842105264,
+      "auth": 0.9023255813953489,
+      "user-store": 0.65
+    }
+  }
+}

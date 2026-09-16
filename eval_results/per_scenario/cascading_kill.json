@@ -1,0 +1,34 @@
+{
+  "scenario": "cascading_kill",
+  "category": "kill",
+  "predicted": "payments",
+  "expected": [
+    "payments",
+    "redis"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 53,
+  "time_seconds": 0.01,
+  "candidates": [
+    "payments",
+    "redis",
+    "gateway",
+    "auth",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 1.5954545454545455,
+      "redis": 1.4500000000000002,
+      "auth": 0.8892421833598305,
+      "db": 0.65,
+      "user-store": 0.65
+    }
+  }
+}

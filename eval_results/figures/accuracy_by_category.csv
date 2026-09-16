@@ -1,0 +1,7 @@
+category,correct,total,accuracy
+compound,5,5,1.0000
+deployment,6,6,1.0000
+error_injection,2,2,1.0000
+exhaustion,5,5,1.0000
+kill,3,3,1.0000
+latency,4,4,1.0000

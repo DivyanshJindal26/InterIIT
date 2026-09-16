@@ -1,0 +1,33 @@
+{
+  "scenario": "user_store_latency",
+  "category": "latency",
+  "predicted": "user-store",
+  "expected": [
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.9,
+  "failure_mode": "exhaustion",
+  "budget_used": 45,
+  "time_seconds": 0.02,
+  "candidates": [
+    "user-store",
+    "auth",
+    "gateway",
+    "payments",
+    "redis"
+  ],
+  "signal_agreement": {
+    "accusation_top": "user-store",
+    "recovery_tiebreaker": null,
+    "selected": "user-store",
+    "suspicion_scores": {
+      "user-store": 2.6,
+      "auth": 1.4665902166843527,
+      "gateway": 1.3257070220529095,
+      "payments": 0.65,
+      "redis": 0.65
+    }
+  }
+}

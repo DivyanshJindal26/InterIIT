@@ -1,0 +1,33 @@
+{
+  "scenario": "intermittent_errors",
+  "category": "error_injection",
+  "predicted": "payments",
+  "expected": [
+    "payments"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 45,
+  "time_seconds": 0.02,
+  "candidates": [
+    "payments",
+    "gateway",
+    "redis",
+    "auth",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 1.5,
+      "gateway": 1.3411719737159244,
+      "redis": 0.65,
+      "auth": 0.65,
+      "db": 0.65
+    }
+  }
+}

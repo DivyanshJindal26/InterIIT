@@ -1,0 +1,36 @@
+{
+  "scenario": "blame_the_wrong_service",
+  "category": "compound",
+  "predicted": "redis",
+  "expected": [
+    "auth",
+    "redis",
+    "user-store"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "exhaustion",
+  "budget_used": 53,
+  "time_seconds": 0.01,
+  "candidates": [
+    "redis",
+    "auth",
+    "gateway",
+    "payments",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "redis",
+    "recovery_tiebreaker": null,
+    "selected": "redis",
+    "suspicion_scores": {
+      "redis": 1.4500000000000002,
+      "auth": 1.3725225225225226,
+      "gateway": 1.1980904522613067,
+      "payments": 0.8264550264550266,
+      "db": 0.65,
+      "user-store": 0.65
+    }
+  }
+}

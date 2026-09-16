@@ -1,0 +1,35 @@
+{
+  "scenario": "rolling_restart_failure",
+  "category": "kill",
+  "predicted": "payments",
+  "expected": [
+    "auth",
+    "payments"
+  ],
+  "correct": true,
+  "predicted_rank": 1,
+  "confidence": 0.6,
+  "failure_mode": "unknown",
+  "budget_used": 49,
+  "time_seconds": 0.01,
+  "candidates": [
+    "payments",
+    "auth",
+    "gateway",
+    "redis",
+    "db"
+  ],
+  "signal_agreement": {
+    "accusation_top": "payments",
+    "recovery_tiebreaker": null,
+    "selected": "payments",
+    "suspicion_scores": {
+      "payments": 1.8,
+      "auth": 1.8,
+      "gateway": 1.5,
+      "redis": 0.65,
+      "db": 0.65,
+      "user-store": 0.65
+    }
+  }
+}
