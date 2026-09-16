@@ -58,8 +58,13 @@ def falsify_hypotheses(
         if c.recovery_info and c.recovery_info.recovery_type == 'real' and c.recovery_info.recovery_time_ns:
             recovery_times[c.service] = c.recovery_info.recovery_time_ns
 
+    RECOVERY_TOLERANCE_NS = 5 * 1_000_000_000
+
     for candidate in candidates:
         if candidate.recovery_info is None or candidate.recovery_info.recovery_type != 'real':
+            continue
+
+        if candidate.has_config_change:
             continue
 
         svc = candidate.service
@@ -68,7 +73,7 @@ def falsify_hypotheses(
 
         for ancestor, descendant in pairs:
             if ancestor in recovery_times and descendant in recovery_times:
-                if recovery_times[descendant] < recovery_times[ancestor]:
+                if recovery_times[descendant] < recovery_times[ancestor] - RECOVERY_TOLERANCE_NS:
                     candidate.falsified = True
                     candidate.falsification_reason = (
                         f'{descendant} recovered before {ancestor}, '

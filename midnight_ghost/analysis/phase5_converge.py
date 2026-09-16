@@ -84,18 +84,30 @@ def converge(
 
     wavefront_top = None
 
+    accusation_top_candidate = accusation_ranking[0] if accusation_ranking else None
+    accusation_no_recovery = (
+        accusation_top_candidate is not None
+        and (accusation_top_candidate.recovery_info is None
+             or accusation_top_candidate.recovery_info.recovery_type == 'none')
+    )
+    recovery_weight_adj = signal_weights.get('recovery', 0.6)
+    accusation_weight_adj = signal_weights.get('accusation', 0.7)
+    if accusation_no_recovery and recovery_top and recovery_top != accusation_top:
+        recovery_weight_adj *= 0.1
+        accusation_weight_adj = max(accusation_weight_adj, 0.8)
+
     signal_scores: dict[str, float] = defaultdict(float)
 
     for c in surviving:
         svc = c.service
         max_sus = accusation_ranking[0].suspicion_score if accusation_ranking else 1.0
         if max_sus > 0:
-            signal_scores[svc] += signal_weights.get('accusation', 0.7) * (c.suspicion_score / max_sus)
+            signal_scores[svc] += accusation_weight_adj * (c.suspicion_score / max_sus)
 
         if recovery_top and recovery_top == svc:
-            signal_scores[svc] += signal_weights.get('recovery', 0.6) * 1.0
+            signal_scores[svc] += recovery_weight_adj * 1.0
         elif c.recovery_info and c.recovery_info.trajectory == 'step':
-            signal_scores[svc] += signal_weights.get('recovery', 0.6) * 0.8
+            signal_scores[svc] += recovery_weight_adj * 0.8
 
         if wavefront_top and wavefront_top == svc:
             signal_scores[svc] += signal_weights.get('wavefront', 0.6) * 1.0
