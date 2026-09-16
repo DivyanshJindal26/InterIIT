@@ -70,31 +70,14 @@ def converge(
     top = ranking[0]
     runner_up = ranking[1] if len(ranking) > 1 else None
 
-    # If top candidate is clearly ahead, use it directly
+    # If top candidate is clearly ahead, high confidence
     if runner_up is None or top.suspicion_score > runner_up.suspicion_score * 1.2:
         top_service = top.service
         confidence = 0.9
     else:
-        # Close race — use recovery ordering as tiebreaker
-        # Only consider services whose suspicion is close to the top
-        contenders = [c for c in ranking
-                      if c.suspicion_score >= top.suspicion_score * 0.7]
-
-        recovery_winner = None
-        contender_names = {c.service for c in contenders}
-        for c in contenders:
-            if (c.recovery_info
-                    and c.recovery_info.recovery_type == 'real'
-                    and c.recovery_info.trajectory == 'step'):
-                recovery_winner = c.service
-                break
-
-        if recovery_winner:
-            top_service = recovery_winner
-            confidence = 0.7
-        else:
-            top_service = top.service
-            confidence = 0.5
+        # Close race — trust the suspicion ranking but lower confidence
+        top_service = top.service
+        confidence = 0.6
 
     top_candidate = next((c for c in surviving if c.service == top_service), surviving[0])
     evidence: list[str] = []

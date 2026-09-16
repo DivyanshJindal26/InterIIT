@@ -177,6 +177,18 @@ def score_accusations(
                         suspicion += metric_distress * 0.5
                         break
 
+        # Entry-point origin: a service with no callers in the call graph
+        # can't have inherited a fault from upstream. If it's anomalous and
+        # has outbound blame, it's the cascade origin, not a victim —
+        # its outbound blame means it sent bad traffic, not that it suffered
+        # from dependencies. Neutralize the blame penalty and reinterpret.
+        has_callers = any(service in callees for callees in call_graph.values())
+        if (not has_callers
+                and effective_anomaly > 0.5
+                and ob > 0.3
+                and ib == 0):
+            suspicion += ob
+
         # Services with no errors and no metric distress are bystanders
         if error_count == 0 and effective_anomaly < 0.1 and not was_killed:
             suspicion *= 0.01
