@@ -17,6 +17,10 @@ CONFIG_CHANGE_REASONS = {
     'DeploymentUpdated', 'RollbackTriggered',
 }
 
+KILL_REASONS = {
+    'OOMKilled', 'CrashLoopBackOff', 'Killed', 'Evicted',
+}
+
 
 def _detect_config_changes(
     k8s_events: list[dict],
@@ -70,7 +74,7 @@ def _get_metric_distress(
     if lat_series:
         peak_lat = max(v for _, v in lat_series)
         if peak_lat > 5:
-            distress += min(1.0, peak_lat / 100.0)
+            distress += min(1.5, peak_lat / 50.0)
 
     err_series = query_api.get_metric_series(
         service, 'error_rate', incident_window.incident,
@@ -104,9 +108,28 @@ def score_accusations(
 
     config_changes = _detect_config_changes(k8s_events, incident_window)
 
+    killed_services: set[str] = set()
+    for event in k8s_events:
+        reason = event.get('reason', '')
+        if reason in KILL_REASONS:
+            ts = event.get('timestamp_ns', 0)
+            if incident_window.incident.start_ns <= ts <= incident_window.incident.end_ns:
+                svc = event.get('service', '')
+                if svc and svc not in ('logging-svc',):
+                    killed_services.add(svc)
+
     blamed_by_map: dict[str, list[BlameEdge]] = defaultdict(list)
     for edge in blame_edges:
         blamed_by_map[edge.accused].append(edge)
+
+    mean_error_rates: dict[str, float] = {}
+    if query_api:
+        for service in cascade_participants:
+            err_series = query_api.get_metric_series(
+                service, 'error_rate', incident_window.incident,
+            )
+            if err_series:
+                mean_error_rates[service] = sum(v for _, v in err_series) / len(err_series)
 
     candidates = []
     for service in cascade_participants:
@@ -130,12 +153,18 @@ def score_accusations(
 
         suspicion = effective_anomaly
 
-        suspicion += depth * 0.15
+        suspicion += depth * 0.02
+
+        was_killed = service in killed_services
 
         if has_cc:
             suspicion *= (1 + ALPHA)
 
-        if error_count == 0 and effective_anomaly < 0.1:
+        if was_killed:
+            suspicion = max(suspicion, effective_anomaly + 0.8)
+            suspicion += depth * 0.2
+
+        if error_count == 0 and effective_anomaly < 0.1 and not was_killed:
             suspicion *= 0.01
 
         blame_from_anomalous = 0.0
@@ -143,9 +172,19 @@ def score_accusations(
             accuser_anomaly = 0.0
             if anomaly_summaries and edge.accuser in anomaly_summaries:
                 accuser_anomaly = anomaly_summaries[edge.accuser].anomaly_score
-            blame_from_anomalous += edge.weight * edge.confidence * accuser_anomaly
+            credibility = 1.0
+            if accuser_anomaly > effective_anomaly + 0.01:
+                ratio = effective_anomaly / max(accuser_anomaly, 0.01)
+                credibility = ratio * ratio
+            capped_weight = min(edge.weight, 5.0)
+            blame_from_anomalous += capped_weight * edge.confidence * accuser_anomaly * credibility
 
-        suspicion += blame_from_anomalous * 0.3
+        suspicion += blame_from_anomalous * 0.05
+
+        if service in mean_error_rates:
+            mer = mean_error_rates[service]
+            if mer > 0.5:
+                suspicion += mer * 0.3
 
         candidates.append(CausalCandidate(
             service=service,
